@@ -3,7 +3,7 @@ const mediasoupClient = require('mediasoup-client');
 class StreamViewer {
     constructor() {
         this.socket = null;
-        this.token = 'dummy-viewer-token';
+        this.token = null;
         this.device = null;
         this.recvTransport = null;
         this.consumers = new Map();
@@ -271,22 +271,6 @@ class StreamViewer {
                 remoteVideo.style.display = 'block';
                 document.getElementById('no-stream').style.display = 'none';
                 
-                // Enable control buttons and update status based on track type
-                if (kind === 'video') {
-                    document.getElementById('mute-webcam').disabled = false;
-                    document.getElementById('video-status').textContent = 'Connected';
-                    document.getElementById('video-status').style.color = 'green';
-                    remoteVideo.style.border = '3px solid green';
-                }
-                if (kind === 'audio') {
-                    document.getElementById('toggle-remote-audio').disabled = false;
-                    document.getElementById('audio-status').textContent = 'Connected';
-                    document.getElementById('audio-status').style.color = 'green';
-                }
-                
-                document.getElementById('connection-status').textContent = 'Connected';
-                document.getElementById('connection-status').style.color = 'green';
-                
                 this.log(`${kind} track added to remote video stream`);
                 this.log('Remote video srcObject:', remoteVideo.srcObject);
 
@@ -319,64 +303,8 @@ class StreamViewer {
         remoteVideo.srcObject = null;
         remoteVideo.style.display = 'none';
         document.getElementById('no-stream').style.display = 'block';
-        
-        // Disable control buttons and reset status
-        document.getElementById('toggle-remote-audio').disabled = true;
-        document.getElementById('mute-webcam').disabled = true;
-        document.getElementById('mute-webcam').textContent = '📷 Mute Webcam';
-        
-        // Reset visual feedback
-        document.getElementById('video-status').textContent = 'No video';
-        document.getElementById('video-status').style.color = 'red';
-        document.getElementById('audio-status').textContent = 'No audio';
-        document.getElementById('audio-status').style.color = 'red';
-        document.getElementById('connection-status').textContent = 'Disconnected';
-        document.getElementById('connection-status').style.color = 'red';
-        remoteVideo.style.border = '3px solid red';
-        
         this.updateStatus('viewer-status', 'Left stream', 'info');
         this.log('Left stream');
-    }
-
-    muteWebcam() {
-        const remoteVideo = document.getElementById('remote-video');
-        const button = document.getElementById('mute-webcam');
-        
-        if (remoteVideo && remoteVideo.srcObject) {
-            const stream = remoteVideo.srcObject;
-            const videoTracks = stream.getVideoTracks();
-            
-            if (videoTracks.length > 0) {
-                const videoTrack = videoTracks[0];
-                videoTrack.enabled = !videoTrack.enabled;
-                button.textContent = videoTrack.enabled ? '📷 Mute Webcam' : '📷 Unmute Webcam';
-                
-                // Optional: Change video background when muted
-                if (!videoTrack.enabled) {
-                    remoteVideo.style.backgroundColor = '#333';
-                } else {
-                    remoteVideo.style.backgroundColor = '#000';
-                }
-                
-                this.log(`Remote video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
-            } else {
-                this.log('No video tracks found in remote stream');
-            }
-        } else {
-            this.log('No remote video stream available');
-            this.updateStatus('viewer-status', 'No video stream to mute', 'error');
-        }
-    }
-
-    toggleRemoteAudio() {
-        const remoteVideo = document.getElementById('remote-video');
-        const button = document.getElementById('toggle-remote-audio');
-        
-        if (remoteVideo) {
-            remoteVideo.muted = !remoteVideo.muted;
-            button.textContent = remoteVideo.muted ? '🔇 Unmute Audio' : '🔊 Mute Audio';
-            this.log(`Remote audio ${remoteVideo.muted ? 'muted' : 'unmuted'}`);
-        }
     }
 }
 
@@ -406,11 +334,6 @@ window.leaveStream = function() {
 
 window.toggleRemoteAudio = function() {
     if (streamViewer) streamViewer.toggleRemoteAudio();
-    else console.error('StreamViewer not initialized');
-};
-
-window.muteWebcam = function() {
-    if (streamViewer) streamViewer.muteWebcam();
     else console.error('StreamViewer not initialized');
 };
 

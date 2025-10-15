@@ -40,19 +40,13 @@
                 <input type="text" id="stream-id" placeholder="Enter Stream ID">
                 <button onclick="joinStream()">Join Stream</button>
                 <button onclick="leaveStream()">Leave Stream</button>
-                <button id="toggle-remote-audio" onclick="toggleRemoteAudio()" disabled>🔊 Mute Audio</button>
-                <button id="mute-webcam" onclick="muteWebcam()" disabled>📷 Mute Webcam</button>
+                <button id="toggle-remote-audio" onclick="toggleRemoteAudio()" disabled>🔊 Mute</button>
             </div>
             <!-- Video starts visible but empty -->
-            <video id="remote-video" autoplay playsinline style="border: 3px solid red;"></video>
+            <video id="remote-video" autoplay playsinline></video>
             <canvas id="video-canvas" width="640" height="480" style="display: none; border: 1px solid #ccc;"></canvas>
             <div id="no-stream" style="padding: 20px; text-align: center; border: 1px dashed #ccc; color: #666;">No stream connected</div>
             <div id="viewer-status" class="status info">Not viewing any stream</div>
-            <div id="stream-info" style="background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 14px;">
-                📺 <strong>Video Status:</strong> <span id="video-status" style="color: red;">No video</span><br>
-                🔊 <strong>Audio Status:</strong> <span id="audio-status" style="color: red;">No audio</span><br>
-                📊 <strong>Connection:</strong> <span id="connection-status" style="color: red;">Disconnected</span>
-            </div>
         </div>
 
         <div class="section">
@@ -84,48 +78,30 @@
           });
         };
 
-        // Enable mute/unmute buttons
+        // Enable mute/unmute button
         document.getElementById("toggle-remote-audio").disabled = false;
-        if (videoTrack) {
-          document.getElementById("mute-webcam").disabled = false;
-        }
       }
 
-      // Mute/unmute audio handler
+      // Mute/unmute handler
       function toggleRemoteAudio() {
         const videoEl = document.getElementById("remote-video");
         const btn = document.getElementById("toggle-remote-audio");
 
         videoEl.muted = !videoEl.muted;
-        btn.textContent = videoEl.muted ? "🔇 Unmute Audio" : "🔊 Mute Audio";
+        btn.textContent = videoEl.muted ? "🔇 Unmute" : "🔊 Mute";
       }
 
-      // Mute/unmute webcam handler
-      function muteWebcam() {
-        const videoEl = document.getElementById("remote-video");
-        const btn = document.getElementById("mute-webcam");
-        
-        if (videoEl && videoEl.srcObject) {
-          const stream = videoEl.srcObject;
-          const videoTracks = stream.getVideoTracks();
-          
-          if (videoTracks.length > 0) {
-            const videoTrack = videoTracks[0];
-            videoTrack.enabled = !videoTrack.enabled;
-            btn.textContent = videoTrack.enabled ? "📷 Mute Webcam" : "📷 Unmute Webcam";
-            
-            // Optional: Show/hide video element or show placeholder
-            if (!videoTrack.enabled) {
-              videoEl.style.backgroundColor = "#333";
-            } else {
-              videoEl.style.backgroundColor = "#000";
-            }
-          }
-        }
-      }
-
-      // For quick testing only: fake a webcam stream after 2s
-      // Remove this in production, your mediasoup consumer should call attachStream()
+      // // For quick testing only: fake a webcam stream after 2s
+      // // Remove this in production, your mediasoup consumer should call attachStream()
+      // setTimeout(async () => {
+      //   try {
+      //     const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      //     attachStream(testStream.getVideoTracks()[0], testStream.getAudioTracks()[0]);
+      //   } catch (err) {
+      //     console.error("Test stream failed", err);
+      //   }
+      // }, 2000);
     </script>
+    
 </body>
 </html>

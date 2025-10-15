@@ -7,3 +7,10 @@ start-services.sh
 .env
 .env.test
 .env.production
+test-frontend
+test-api.js
+test-auth.js
+test-cache.js
+test-comprehensive.js
+test-simple.js
+test-socket.js

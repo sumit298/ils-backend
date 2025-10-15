@@ -3787,3 +3787,105 @@
 {"level":"info","message":"Client disconnected: i6IqUKzart109oM2AAAL, Reason: transport close","timestamp":"2025-09-26T18:21:58.768Z"}
 {"level":"info","message":"Initializing services...","timestamp":"2025-09-27T15:23:46.157Z"}
 {"level":"error","message":"Failed to initialize services: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","reason":{"commonWireVersion":0,"compatible":true,"heartbeatFrequencyMS":10000,"localThresholdMS":15,"logicalSessionTimeoutMinutes":null,"maxElectionId":null,"maxSetVersion":null,"servers":{},"setName":null,"stale":false,"type":"Unknown"},"stack":"MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017\n    at _handleConnectionErrors (/Users/sumitsinha/Courses/ils-backend/node_modules/mongoose/lib/connection.js:816:11)\n    at NativeConnection.openUri (/Users/sumitsinha/Courses/ils-backend/node_modules/mongoose/lib/connection.js:791:11)\n    at async initializeServices (/Users/sumitsinha/Courses/ils-backend/server.js:126:9)","timestamp":"2025-09-27T15:23:51.168Z"}
+{"level":"info","message":"Initializing services...","timestamp":"2025-09-27T15:25:36.457Z"}
+{"level":"info","message":"Database connected","timestamp":"2025-09-27T15:25:36.473Z"}
+{"level":"info","message":"Creating 8 mediasoup workers","timestamp":"2025-09-27T15:25:36.473Z"}
+{"level":"info","message":"Mediasoup initialized with 8 workers","timestamp":"2025-09-27T15:25:36.550Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-27T15:25:36.566Z"}
+{"level":"info","message":"Server running on port 3001","timestamp":"2025-09-27T15:25:36.567Z"}
+{"level":"info","message":"Initializing services...","timestamp":"2025-09-27T15:26:16.138Z"}
+{"level":"info","message":"Database connected","timestamp":"2025-09-27T15:26:16.154Z"}
+{"level":"info","message":"Creating 8 mediasoup workers","timestamp":"2025-09-27T15:26:16.155Z"}
+{"level":"info","message":"Mediasoup initialized with 8 workers","timestamp":"2025-09-27T15:26:16.220Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-27T15:26:16.239Z"}
+{"level":"info","message":"Server running on port 3001","timestamp":"2025-09-27T15:26:16.240Z"}
+{"level":"info","message":"User testuser1 logged in successfully","timestamp":"2025-09-27T15:26:21.387Z"}
+{"level":"info","message":"Client connected: uIbZXdHkjJB3b2yWAAAD, User: 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:21.398Z"}
+{"level":"info","message":"Room created: 17dd267d-4ff2-449f-a51c-3c44c7e325f1 on worker 0","timestamp":"2025-09-27T15:26:24.667Z"}
+{"level":"info","message":"Stream saved to database: 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:26:24.705Z"}
+{"level":"info","message":"Stream created: 17dd267d-4ff2-449f-a51c-3c44c7e325f1 by user 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.705Z"}
+{"level":"info","message":"Stream created: 17dd267d-4ff2-449f-a51c-3c44c7e325f1 by user: 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.705Z"}
+{"level":"info","message":"Transport connected: c8d4ed34-f14a-4387-a067-e906aa980de5 for the 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.757Z"}
+{"level":"info","message":"Producer created: f05a311c-b33d-4380-822d-168a72292bc4 (video) for user 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.781Z"}
+{"level":"info","message":"Producer Created f05a311c-b33d-4380-822d-168a72292bc4 (video) for user 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.786Z"}
+{"level":"info","message":"Producer created: 0a167984-cbc9-464c-84e8-0ea9703d58b6 (audio) for user 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.805Z"}
+{"level":"info","message":"Producer Created 0a167984-cbc9-464c-84e8-0ea9703d58b6 (audio) for user 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:24.808Z"}
+{"level":"info","message":"User viewer1 logged in successfully","timestamp":"2025-09-27T15:26:54.473Z"}
+{"level":"info","message":"Client connected: bGgdPUrHvUQCO9IvAAAH, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:26:54.481Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:26:59.805Z"}
+{"level":"info","message":"Found existing producer f05a311c-b33d-4380-822d-168a72292bc4 (video) from 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:59.806Z"}
+{"level":"info","message":"Found existing producer 0a167984-cbc9-464c-84e8-0ea9703d58b6 (audio) from 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:26:59.806Z"}
+{"level":"info","message":"Sent 2 existing producers to 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:26:59.807Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:26:59.807Z"}
+{"level":"info","message":"Found 2 existing producers for room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:27:00.851Z"}
+{"level":"info","message":"Consumer created: aaa0c004-14a0-4907-be50-4d09547c62b2 for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:00.870Z"}
+{"level":"info","message":"Consumer created: 0283c3d4-ba68-4fde-ad91-fe11a11fb8ea for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:00.871Z"}
+{"level":"info","message":"Transport connected: db4436de-b494-4c68-a6b9-6efbf8f91ddb for the 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:00.886Z"}
+{"level":"info","message":"Consumer resumed: aaa0c004-14a0-4907-be50-4d09547c62b2 for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:00.894Z"}
+{"level":"info","message":"Consumer resumed: 0283c3d4-ba68-4fde-ad91-fe11a11fb8ea for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:00.914Z"}
+{"level":"info","message":"Client disconnecting: bGgdPUrHvUQCO9IvAAAH","timestamp":"2025-09-27T15:27:17.275Z"}
+{"level":"info","message":"Participant 68d5e38f4c36bff7d3f1353c removed from room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:27:17.277Z"}
+{"level":"info","message":"Client disconnected: bGgdPUrHvUQCO9IvAAAH, Reason: transport close","timestamp":"2025-09-27T15:27:17.277Z"}
+{"level":"info","message":"User viewer1 logged in successfully","timestamp":"2025-09-27T15:27:21.621Z"}
+{"level":"info","message":"Client connected: XOsRRksVskj-K0ZFAAAL, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:21.637Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:27:25.286Z"}
+{"level":"info","message":"Found existing producer f05a311c-b33d-4380-822d-168a72292bc4 (video) from 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:27:25.286Z"}
+{"level":"info","message":"Found existing producer 0a167984-cbc9-464c-84e8-0ea9703d58b6 (audio) from 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:27:25.286Z"}
+{"level":"info","message":"Sent 2 existing producers to 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:25.287Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:27:25.287Z"}
+{"level":"info","message":"Found 2 existing producers for room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:27:26.318Z"}
+{"level":"info","message":"Consumer created: 3e157641-fa61-479a-b5e6-3188186d4083 for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:26.329Z"}
+{"level":"info","message":"Consumer created: 6342ef43-e3ff-43d2-8457-d7dc92b9520a for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:26.330Z"}
+{"level":"info","message":"Transport connected: 6e0fdba8-5407-47d7-b60b-de06d3e95b3f for the 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:26.342Z"}
+{"level":"info","message":"Consumer resumed: 3e157641-fa61-479a-b5e6-3188186d4083 for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:26.350Z"}
+{"level":"info","message":"Consumer resumed: 6342ef43-e3ff-43d2-8457-d7dc92b9520a for user 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:26.372Z"}
+{"level":"info","message":"User viewer1 logged in successfully","timestamp":"2025-09-27T15:27:54.158Z"}
+{"level":"info","message":"Client connected: ZLjwAFFY6V0RbfH7AAAP, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:27:54.170Z"}
+{"level":"info","message":"Initializing services...","timestamp":"2025-09-27T15:28:33.994Z"}
+{"level":"info","message":"Database connected","timestamp":"2025-09-27T15:28:34.012Z"}
+{"level":"info","message":"Creating 8 mediasoup workers","timestamp":"2025-09-27T15:28:34.013Z"}
+{"level":"info","message":"Mediasoup initialized with 8 workers","timestamp":"2025-09-27T15:28:34.079Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-27T15:28:34.095Z"}
+{"level":"info","message":"Server running on port 3001","timestamp":"2025-09-27T15:28:34.095Z"}
+{"level":"info","message":"Client connected: Nbr9rot0Q2g9QiNoAAAB, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:28:34.129Z"}
+{"level":"info","message":"Client connected: wEs9H_85UXfZrYnRAAAD, User: 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:28:34.216Z"}
+{"level":"info","message":"Client connected: HdmNUchBZGxVvD7qAAAF, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:28:34.708Z"}
+{"level":"info","message":"Initializing services...","timestamp":"2025-09-27T15:28:36.251Z"}
+{"level":"info","message":"Database connected","timestamp":"2025-09-27T15:28:36.266Z"}
+{"level":"info","message":"Creating 8 mediasoup workers","timestamp":"2025-09-27T15:28:36.266Z"}
+{"level":"info","message":"Mediasoup initialized with 8 workers","timestamp":"2025-09-27T15:28:36.327Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-27T15:28:36.339Z"}
+{"level":"info","message":"Server running on port 3001","timestamp":"2025-09-27T15:28:36.339Z"}
+{"level":"info","message":"Client connected: pwStqhTK3f1II8OXAAAB, User: 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:28:37.364Z"}
+{"level":"info","message":"Client connected: FRfn3gn-IbTJ3aqyAAAD, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:28:37.398Z"}
+{"level":"info","message":"Client connected: AuJOYvAHqMingma5AAAF, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:28:37.707Z"}
+{"level":"info","message":"Initializing services...","timestamp":"2025-09-27T15:28:50.264Z"}
+{"level":"info","message":"Database connected","timestamp":"2025-09-27T15:28:50.281Z"}
+{"level":"info","message":"Creating 8 mediasoup workers","timestamp":"2025-09-27T15:28:50.281Z"}
+{"level":"info","message":"Mediasoup initialized with 8 workers","timestamp":"2025-09-27T15:28:50.346Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-27T15:28:50.362Z"}
+{"level":"info","message":"Server running on port 3001","timestamp":"2025-09-27T15:28:50.362Z"}
+{"level":"info","message":"Client connected: WEO_kTJRUvpmAKUNAAAB, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:28:50.782Z"}
+{"level":"info","message":"Client connected: HDiPjzCdJf874c6kAAAD, User: 68d5dceaf02231c260c7385c","timestamp":"2025-09-27T15:28:51.429Z"}
+{"level":"info","message":"Client connected: J4f-Jj1L8gX7Lsw2AAAF, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:28:51.717Z"}
+{"level":"info","message":"Client disconnecting: WEO_kTJRUvpmAKUNAAAB","timestamp":"2025-09-27T15:28:55.587Z"}
+{"level":"info","message":"Client disconnected: WEO_kTJRUvpmAKUNAAAB, Reason: transport close","timestamp":"2025-09-27T15:28:55.588Z"}
+{"level":"info","message":"User viewer1 logged in successfully","timestamp":"2025-09-27T15:30:19.333Z"}
+{"level":"info","message":"Client connected: DVlWi4pGWtlWsaMZAAAZ, User: 68d5e38f4c36bff7d3f1353c","timestamp":"2025-09-27T15:30:19.347Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:22.840Z"}
+{"level":"info","message":"No existing producers found for room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:22.840Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:22.842Z"}
+{"level":"info","message":"Room created: 17dd267d-4ff2-449f-a51c-3c44c7e325f1 on worker 0","timestamp":"2025-09-27T15:30:22.872Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:23.669Z"}
+{"level":"info","message":"No existing producers found for room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:23.669Z"}
+{"level":"info","message":"User 68d5e38f4c36bff7d3f1353c joined stream 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:23.671Z"}
+{"level":"info","message":"Found 0 existing producers for room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:23.885Z"}
+{"level":"info","message":"Found 0 existing producers for room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:30:24.702Z"}
+{"level":"info","message":"Client disconnecting: DVlWi4pGWtlWsaMZAAAZ","timestamp":"2025-09-27T15:45:16.572Z"}
+{"level":"info","message":"Participant 68d5e38f4c36bff7d3f1353c removed from room 17dd267d-4ff2-449f-a51c-3c44c7e325f1","timestamp":"2025-09-27T15:45:16.575Z"}
+{"level":"info","message":"Room 17dd267d-4ff2-449f-a51c-3c44c7e325f1 closed (empty)","timestamp":"2025-09-27T15:45:16.575Z"}
+{"level":"info","message":"Client disconnected: DVlWi4pGWtlWsaMZAAAZ, Reason: transport close","timestamp":"2025-09-27T15:45:16.576Z"}
+{"level":"info","message":"Client disconnecting: J4f-Jj1L8gX7Lsw2AAAF","timestamp":"2025-09-27T15:45:18.692Z"}
+{"level":"info","message":"Client disconnected: J4f-Jj1L8gX7Lsw2AAAF, Reason: transport close","timestamp":"2025-09-27T15:45:18.693Z"}
+{"level":"info","message":"Client disconnecting: HDiPjzCdJf874c6kAAAD","timestamp":"2025-09-27T15:45:30.345Z"}
+{"level":"info","message":"Client disconnected: HDiPjzCdJf874c6kAAAD, Reason: transport close","timestamp":"2025-09-27T15:45:30.345Z"}
