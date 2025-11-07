@@ -1,65 +1,118 @@
-# API Testing Summary
+# Interactive Live Streaming Platform - Backend
 
-## ✅ All Systems Working!
+A scalable real-time live streaming platform built with Node.js, WebRTC (MediaSoup), Socket.IO, and MongoDB.
 
-### 🔧 Services Status
-- ✅ **MongoDB**: Connected and working
-- ✅ **Redis**: Connected and caching properly  
-- ✅ **RabbitMQ**: Connected and messaging working
-- ✅ **MediaSoup**: Workers initialized and WebRTC ready
+## 🚀 Features
 
-### 🌐 HTTP API Endpoints
+- **User Authentication** - JWT-based auth with secure password hashing
+- **Live Streaming** - WebRTC-powered real-time video streaming via MediaSoup
+- **Real-time Chat** - Socket.IO-based live chat during streams
+- **Stream Management** - Create, update, delete, and browse live streams
+- **Analytics** - Track viewers, chat messages, and stream statistics
+- **Caching** - Redis integration for performance optimization
+- **Message Queue** - RabbitMQ for event processing and analytics
 
-#### Authentication (`/api/auth`)
-- ✅ `POST /api/auth/register` - User registration
-- ✅ `POST /api/auth/login` - User login
-- ✅ `GET /api/auth/me` - Get user profile
-- ✅ `POST /api/auth/refresh-token` - Token refresh
-- ✅ `POST /api/auth/logout` - User logout
+## 🛠️ Tech Stack
 
-#### Streams (`/api/streams`)
-- ✅ `GET /api/streams` - Get all streams
-- ✅ `POST /api/streams` - Create new stream
-- ✅ `GET /api/streams/:id` - Get specific stream
-- ✅ `PUT /api/streams/:id` - Update stream
-- ✅ `DELETE /api/streams/:id` - Delete stream
-- ✅ `POST /api/streams/:id/join` - Join stream
-- ✅ `GET /api/streams/:id/stats` - Get stream statistics
+- **Runtime**: Node.js + Express.js
+- **Database**: MongoDB
+- **Cache**: Redis
+- **Message Queue**: RabbitMQ
+- **WebRTC**: MediaSoup
+- **Real-time**: Socket.IO
+- **Authentication**: JWT + bcrypt
 
-#### Chat (`/api/chat`)
-- ✅ `GET /api/chat/:streamId` - Get chat messages
-- ✅ `POST /api/chat/:streamId` - Send chat message
-- ✅ `DELETE /api/chat/:streamId/:messageId` - Delete message
-- ✅ `GET /api/chat/:streamId/stats` - Get chat statistics
+## 📦 Installation
 
-### 🔌 Socket.IO Events
-- ✅ **Authentication**: Token-based auth working
-- ✅ **get-router-capabilities**: MediaSoup router capabilities
-- ✅ **create-stream**: Stream creation via socket
-- ✅ **join-stream**: Stream joining via socket
-- ✅ **WebRTC Transport**: Ready for media streaming
+```bash
+# Clone repository
+git clone <repository-url>
+cd ils-backend
 
-### 🛠️ Issues Fixed
-1. **MongoDB Authentication**: Removed auth requirement
-2. **RabbitMQ Channel**: Added missing channel creation
-3. **Password Hashing**: Added bcrypt middleware to User model
-4. **Auth Middleware**: Fixed headers access and token parsing
-5. **Route Initialization**: Fixed service dependency order
-6. **Missing Methods**: Added required methods to StreamService and ChatService
+# Install dependencies
+npm install
 
-### 🚀 Ready for Production
-Your Interactive Live Streaming backend is fully functional with:
-- Complete user authentication system
-- Stream management with WebRTC support
-- Real-time chat functionality
-- Proper error handling and logging
-- Rate limiting (temporarily disabled for testing)
-- Database persistence with Redis caching
-- Message queue for analytics and events
+# Start services (MongoDB, Redis, RabbitMQ)
+docker-compose up -d
 
-### 📝 Next Steps
-1. Re-enable rate limiting with appropriate limits
-2. Add comprehensive error monitoring
-3. Implement stream recording functionality
-4. Add user roles and permissions
-5. Set up production environment variables
+# Start server
+npm start
+```
+
+## 🔧 Environment Variables
+
+Create a `.env` file:
+
+```env
+PORT=3001
+MONGODB_URI=mongodb://localhost:27017/ils
+REDIS_URL=redis://localhost:6379
+RABBITMQ_URL=amqp://localhost:5672
+JWT_SECRET=your-secret-key
+NODE_ENV=development
+```
+
+## 📡 API Endpoints
+
+### Authentication (`/api/auth`)
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get user profile
+- `POST /api/auth/refresh-token` - Token refresh
+- `POST /api/auth/logout` - User logout
+
+### Streams (`/api/streams`)
+- `GET /api/streams` - Get all streams
+- `POST /api/streams` - Create new stream
+- `GET /api/streams/:id` - Get specific stream
+- `PUT /api/streams/:id` - Update stream
+- `DELETE /api/streams/:id` - Delete stream
+- `POST /api/streams/:id/join` - Join stream
+- `GET /api/streams/:id/stats` - Get stream statistics
+
+### Chat (`/api/chat`)
+- `GET /api/chat/:streamId` - Get chat messages
+- `POST /api/chat/:streamId` - Send chat message
+- `DELETE /api/chat/:streamId/:messageId` - Delete message
+- `GET /api/chat/:streamId/stats` - Get chat statistics
+
+## 🔌 Socket.IO Events
+
+**Client → Server**
+- `join-stream` - Join a stream room
+- `create-stream` - Create new stream
+- `get-router-capabilities` - Get MediaSoup router RTP capabilities
+- `create-transport` - Create WebRTC transport
+- `connect-transport` - Connect WebRTC transport
+- `produce` - Start producing media
+- `consume` - Start consuming media
+
+**Server → Client**
+- `new-message` - New chat message received
+- `viewer-count` - Updated viewer count
+- `stream-ended` - Stream has ended
+
+## 🏗️ Project Structure
+
+```
+src/
+├── models/          # MongoDB schemas
+├── routes/          # API route handlers
+├── services/        # Business logic
+├── middleware/      # Auth & validation
+server.js            # Entry point
+```
+
+## 🧪 Testing
+
+```bash
+# Run API tests
+node test-api.js
+
+# Run comprehensive tests
+node test-comprehensive.js
+```
+
+## 📝 License
+
+MIT
