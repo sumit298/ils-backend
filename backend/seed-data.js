@@ -9,7 +9,7 @@ const seedData = async () => {
         console.log('🌱 Starting database seeding...');
         
         // Connect to database
-        await mongoose.connect(process.env.DATABASE_URL || 'mongodb://localhost:27017/ils_db');
+        await mongoose.connect(process.env.DATABASE_URL || 'mongodb://localhost:27018/streamHub');
         console.log('✅ Connected to database');
 
         // Clear existing data
