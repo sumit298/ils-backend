@@ -1,47 +1,92 @@
-version: '3.8'
 
 services:
+  # MongoDB Database
   mongodb:
     image: mongo:7
-    container_name: ils_mongodb
+    container_name: streamhub-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: ils_db
+      MONGO_INITDB_DATABASE: streamhub
     volumes:
       - mongodb_data:/data/db
     networks:
-      - ils_network
+      - streamhub-network
 
+  # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: ils_redis
+    container_name: streamhub-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
-      - ils_network
+      - streamhub-network
 
+  # RabbitMQ Message Queue
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: ils_rabbitmq
+    container_name: streamhub-rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"    # AMQP port
-      - "15672:15672"  # Management UI
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: password
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - ils_network
+      - streamhub-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: streamhub-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/streamhub
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:password@rabbitmq:5672
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      NODE_ENV: development
+    depends_on:
+      - mongodb
+      - redis
+      - rabbitmq
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - streamhub-network
+
+  # Frontend Next.js App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: streamhub-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - streamhub-network
 
 volumes:
   mongodb_data:
@@ -49,5 +94,5 @@ volumes:
   rabbitmq_data:
 
 networks:
-  ils_network:
+  streamhub-network:
     driver: bridge

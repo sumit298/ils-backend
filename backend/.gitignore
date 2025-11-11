@@ -1,4 +1,4 @@
-node_modules
+node_modules/
 
 combined.log
 error.log
@@ -15,3 +15,8 @@ test-comprehensive.js
 test-simple.js
 test-socket.js
 FRONTEND_INTEGRATION.md
+frontend-streaming-integration.md
+test-all-apis.js
+architecture.md
+DESIGN_BRIEF.md
+seed-data.js
