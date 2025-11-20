@@ -5,12 +5,10 @@ class AuthMiddleWare {
     static async authenticate(req, res, next) {
         try {
             const authHeader = req.headers.authorization;
+            const cookieToken = req.cookies.token;
 
-            if (!authHeader) {
-                return res.status(401).json({ message: 'Access denied, No token provided.' });
-            }
-
-            const token = authHeader.replace('Bearer ', '');
+            // Try cookie first (more secure), then header (fallback)
+            const token = cookieToken || (authHeader && authHeader.replace('Bearer ', ''));
 
             if (!token) {
                 return res.status(401).json({ message: 'Access denied, Invalid token format.' });

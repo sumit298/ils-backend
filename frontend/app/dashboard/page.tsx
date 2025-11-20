@@ -6,19 +6,19 @@ import { useEffect, useState } from "react"
 const Dashboard = () => {
     const [streams, setStreams] = useState([]);
 
-    const fetchStreams = async ()=> {
-        try {
-            const response = await fetch("http://localhost:3001/api/streams")
-            console.log(response.json())
+    // const fetchStreams = async ()=> {
+    //     try {
+    //         const response = await fetch("http://localhost:3001/api/streams")
+    //         console.log(response.json())
             
-        } catch (error) {
+    //     } catch (error) {
             
-        }
-    }
+    //     }
+    // }
 
-    useEffect(()=>{
-        fetchStreams()
-    },[] )
+    // useEffect(()=>{
+    //     fetchStreams()
+    // },[] )
     return (
         <div className="min-h-screen bg-background">
             <Navbar />

@@ -7,6 +7,8 @@ import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import toast from "react-hot-toast";
 import { Button } from "./ui/button";
+import { useAuth } from "@/lib/AuthContext";
+import { useRouter } from "next/navigation";
 
 
 interface CreateStreamDialogProps {
@@ -33,9 +35,14 @@ export const CreateStreamDialog = ({ open, onOpenChange }: CreateStreamDialogPro
     const [description, setDescription] = useState("");
     const [thumbnail, setThumbnail] = useState("");
     const [tags, setTags] = useState("");
+    const router = useRouter();
     //   const { toast } = useToast();
 
-    const handleCreateStream = () => {
+    // call authcontext
+    const { user } = useAuth();
+    console.log(user)
+
+    const handleCreateStream = async () => {
         if (!title.trim()) {
             toast.error("Please enter a stream title");
             return;
@@ -54,6 +61,30 @@ export const CreateStreamDialog = ({ open, onOpenChange }: CreateStreamDialogPro
             thumbnail: thumbnail || `https://picsum.photos/400/225?random=${Date.now()}`,
             tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
         };
+
+        //api call
+        try {
+            const response = await fetch("http://localhost:3001/api/streams", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    
+                },
+                credentials: "include",
+                body: JSON.stringify(streamData),
+            })
+
+            const result = await response.json();
+            console.log(result);
+            if(response.ok){
+                router.push(`/stream/${result.stream.id}`);
+            }
+        
+
+            
+        } catch (error) {
+            
+        }
 
         console.log("Stream data:", streamData);
 
