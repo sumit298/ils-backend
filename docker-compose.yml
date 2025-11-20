@@ -6,7 +6,7 @@ services:
     container_name: streamhub-mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     environment:
       MONGO_INITDB_DATABASE: streamhub
     volumes:
@@ -20,7 +20,7 @@ services:
     container_name: streamhub-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -76,7 +76,7 @@ services:
     container_name: streamhub-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
     depends_on:

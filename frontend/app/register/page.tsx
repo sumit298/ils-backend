@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
 import {z} from "zod";
+import { useRouter } from "next/navigation";
 
 const registerSchema = z
     .object({
@@ -46,6 +47,8 @@ const Register = () => {
         confirmPassword: "",
     });
 
+    const router = useRouter();
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -62,10 +65,47 @@ const Register = () => {
         setErrors((prev) => ({ ...prev, [name]: "" }));
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         try {
             registerSchema.parse(registerData);
+
+            const apiData = {
+                username: registerData.username,
+                email: registerData.email,
+                password: registerData.password
+            }
             console.log("Valid data:", registerData);
+            const registerResult = await fetch("http://localhost:3001/api/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                credentials: "include",
+                body: JSON.stringify(apiData)
+            })
+
+            const result = await registerResult.json();
+            console.log(result); 
+
+            if(registerResult.ok){
+                
+                setRegisterData({
+                    email: "",
+                    username: "",
+                    password: "",
+                    confirmPassword: ""
+                })
+
+                router.push("/dashboard")
+            }
+            else{
+                if(result.errors){
+                    setErrors(result.errors)
+                }
+            }
+            
+            // reset the state
+
             // Handle successful registration here
         } catch (error) {
             if (error instanceof z.ZodError) {

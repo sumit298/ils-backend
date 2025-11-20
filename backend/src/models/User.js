@@ -24,11 +24,7 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: 6
     },
-    displayName: {
-        type: String,
-        trim: true,
-        maxlength: 50
-    },
+
     avatar: {
         type: String,
         default: null
@@ -132,7 +128,7 @@ userSchema.methods.getPublicProfile = function () {
     return {
         id: this._id,
         username: this.username,
-        displayName: this.displayName,
+
         avatar: this.avatar,
         bio: this.bio,
         isVerified: this.isVerified,

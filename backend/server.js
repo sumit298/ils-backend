@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose')
 const winston = require('winston');
 const prometheus = require('prom-client');
+const morgan = require('morgan')
 
 const MediaService = require('./src/services/MediaService');
 const MessageQueue = require('./src/services/MessageQueue');
@@ -15,6 +16,7 @@ const StreamService = require('./src/services/StreamService');
 const ChatService = require('./src/services/ChatService');
 const AuthMiddleWare = require('./src/middleware/middleware.auth');
 const { specs, swaggerUi } = require('./swagger');
+const cookieParser = require('cookie-parser');
 
 //metrics - later
 
@@ -51,9 +53,15 @@ const io = socketIo(server, {
 if (process.env.NODE_ENV !== 'test') {
     app.use(helmet());
 }
-app.use(cors());
 
+app.use(cors({
+    origin: 'http://localhost:3000', // Your frontend URL //todo: remove this
+    credentials: true
+}));
+
+app.use(morgan("dev"))
 app.use(express.json({ limit: "10mb" }));
+app.use(cookieParser());
 
 // Serve test frontend
 app.use('/test', express.static('test-frontend'));
