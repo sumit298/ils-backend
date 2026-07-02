@@ -964,10 +964,11 @@ const WatchPage = () => {
             `✅ [VIEWER] Audio consumer resumed (${(performance.now() - t7).toFixed(0)}ms)`,
           );
 
-          // Store audio consumer but DON'T add track yet
+          // For audio-only streams, add the track directly to stream
+          stream.addTrack(consumer.track);
           audioConsumerRef.current = consumer;
           setConsumedProducers((prev) => new Set(prev).add(audioProducer.id));
-          console.log("🎵 [VIEWER] Audio consumer stored (will add on unmute)");
+          console.log("🎵 [VIEWER] Audio track added to stream");
         }
       }
 
@@ -976,7 +977,30 @@ const WatchPage = () => {
         (p: any) => p.kind === "video",
       );
       if (!videoProducer) {
-        throw new Error("No camera video producer found");
+        // No video - audio-only stream (like AI streamer)
+        console.log('[VIEWER] Audio-only stream detected, skipping video');
+        
+        // Store camera stream with audio only
+        cameraStreamRef.current = stream;
+        setCameraStream(stream);
+        
+        setIsLoading(false);
+        
+        // Wait for next tick to ensure DOM is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Play the audio through the video element (audio works without video track)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = isMuted;
+          await videoRef.current.play().catch((e) => {
+            console.log('Audio play deferred (will play on unmute):', e.name);
+          });
+        }
+        
+        toast.success("Connected to audio stream - Click unmute to hear!", { position: "bottom-left" });
+        console.log('✓ [VIEWER] Audio-only stream ready - unmute to hear');
+        return;
       }
 
       const t8 = performance.now();

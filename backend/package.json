@@ -13,7 +13,8 @@
     "docker:logs": "docker-compose logs -f",
     "docker:clean": "docker-compose down -v",
     "seed": "tsx seed-data.js",
-    "worker": "tsx --env-file=.env.local src/workers/vodWorker.ts"
+    "worker": "tsx --env-file=.env.local src/workers/vodWorker.ts",
+    "test:ai-stream": "tsx --env-file=.env.local src/services/AI/test-ai-stream.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",

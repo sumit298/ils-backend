@@ -1,4 +1,4 @@
-import textToSpeech from '@google-cloud/text-to-speech';
+import * as textToSpeech from '@google-cloud/text-to-speech';
 import fs from 'fs';
 import path from 'path';
 import util from 'util';
@@ -49,6 +49,31 @@ class TTSService {
       throw new Error('No audio content generated');
     }
 
+    return Buffer.from(response.audioContent as Uint8Array);
+  }
+
+  async synthesizeForStreaming(
+    text: string,
+    options: TTSOptions = { voice: 'male' }
+  ): Promise<Buffer> {
+    const request = {
+      input: { text },
+      voice: {
+        languageCode: options.languageCode || "en-US",
+        name: this.getVoiceName(options.voice),
+      },
+      audioConfig: {
+        audioEncoding: 'LINEAR16' as const,
+        sampleRateHertz: 48000,
+        audioChannelCount: 1,
+        speakingRate: 1.0,
+        pitch: 0,
+      }
+    };
+    const [response] = await this.client.synthesizeSpeech(request);
+    if(!response.audioContent) {
+      throw new Error('No audio content generated');
+    }
     return Buffer.from(response.audioContent as Uint8Array);
   }
 
