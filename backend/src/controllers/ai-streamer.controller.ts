@@ -151,8 +151,18 @@ class AIStreamerController {
       // First batch already streamed before this loop starts
       // Just keep looping
       for (let loop = 0; loop < 20; loop++) {
+        if (!this.activeStreamers.has(roomId) || !audioProducer.isActive()) {
+          this.logger.info('AI audio loop stopped');
+          return;
+        }
+
         this.logger.info(`🔄 Looping audio (iteration ${loop + 1}/20)`);
         for (let i = 0; i < pcmBuffers.length; i++) {
+          if (!this.activeStreamers.has(roomId) || !audioProducer.isActive()) {
+            this.logger.info('AI audio loop stopped');
+            return;
+          }
+
           await audioProducer.streamSegment(pcmBuffers[i]);
           await new Promise(resolve => setTimeout(resolve, 50));
         }
@@ -171,9 +181,12 @@ class AIStreamerController {
       await Stream.updateOne({ id: roomId }, { isLive: false, endedAt: new Date() });
 
     } catch (error) {
-      this.logger.error('Audio streaming loop error:', error);
       this.activeStreamers.delete(roomId);
-      throw error;
+      if (audioProducer.isActive()) {
+        this.logger.error('Audio streaming loop error:', error);
+      } else {
+        this.logger.info('AI audio loop stopped');
+      }
     }
   }
 

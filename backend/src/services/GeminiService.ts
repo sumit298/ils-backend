@@ -71,7 +71,7 @@ Return ONLY the JSON array, no other text.
     const text = response.text;
     
     // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const jsonMatch = text?.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       throw new Error('Failed to parse script from Gemini response');
     }

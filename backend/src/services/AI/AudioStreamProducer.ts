@@ -75,6 +75,15 @@ class AudioStreamProducer {
           this.logger.debug(`FFmpeg: ${data.toString().trim()}`);
         });
 
+        this.ffmpegProcess.stdin.on('error', (err: NodeJS.ErrnoException) => {
+          this.isStreaming = false;
+          if (err.code === 'EPIPE') {
+            this.logger.info('FFmpeg stdin closed while stopping stream');
+            return;
+          }
+          this.logger.error('FFmpeg stdin error:', err);
+        });
+
         // Handle unexpected process exit
         this.ffmpegProcess.on('close', (code) => {
           this.logger.warn(`FFmpeg process exited with code ${code}`);
@@ -123,11 +132,17 @@ class AudioStreamProducer {
         this.logger.info(`Streaming segment: ${audioBuffer.length} bytes`);
 
         // Write to existing FFmpeg stdin (DON'T close it!)
-        const written = this.ffmpegProcess!.stdin.write(audioBuffer);
+        const process = this.ffmpegProcess;
+        if (!process || !this.isStreaming || process.stdin.destroyed || process.killed) {
+          resolve();
+          return;
+        }
+
+        const written = process.stdin.write(audioBuffer);
 
         if (!written) {
           // Buffer is full, wait for drain
-          this.ffmpegProcess!.stdin.once('drain', () => {
+          process.stdin.once('drain', () => {
             this.logger.debug('FFmpeg stdin drained, continuing...');
             resolve();
           });
@@ -212,6 +227,10 @@ class AudioStreamProducer {
   cleanup(): void {
     if (this.ffmpegProcess) {
       try {
+        this.isStreaming = false;
+        if (!this.ffmpegProcess.stdin.destroyed) {
+          this.ffmpegProcess.stdin.destroy();
+        }
         this.ffmpegProcess.kill('SIGTERM');
         this.logger.info('FFmpeg process killed');
       } catch (err) {
@@ -219,7 +238,6 @@ class AudioStreamProducer {
       }
       this.ffmpegProcess = null;
     }
-    this.isStreaming = false;
   }
 
   /**
