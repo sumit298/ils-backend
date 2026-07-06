@@ -1,4 +1,4 @@
-import GeminiService from "./GeminiService.js";
+import LLMService from "./LLMService.js";
 import TTSService from "./TTSService.js";
 import R2Service from "./R2Service.js";
 import Logger from "@utils/logger.js";
@@ -40,7 +40,7 @@ class AIPodcastService {
 
       // Step 1: Generate script with Gemini
       console.log("[AI-PODCAST] Step 1: Generating script with Gemini...");
-      const script = await GeminiService.generateScript({
+      const script = await LLMService.generateScript({
         topic: input.topic,
         duration: input.duration,
         knowledgeBase: input.knowledgeBase,

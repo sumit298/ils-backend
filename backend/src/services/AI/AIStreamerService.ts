@@ -1,8 +1,9 @@
 import { Types } from "mongoose";
+import type { Server as SocketIOServer } from "socket.io";
 import type { Logger } from "winston";
 import type MediaService from "../MediaService";
 import TTSService from "../TTSService";
-import GeminiService from "../GeminiService";
+import LLMService from "../LLMService";
 import AudioStreamProducer from "./AudioStreamProducer";
 import AIStreamer, { IAIStreamer } from "../../models/AIStreamer";
 import Stream from "../../models/Stream";
@@ -31,106 +32,133 @@ interface RuntimeState {
 class AIStreamerService {
   private logger: Logger;
   private mediaService: MediaService;
+  private io: SocketIOServer;
   private activeStreamers: Map<string, RuntimeState> = new Map();
 
-  constructor(logger: Logger, mediaService: MediaService) {
+  constructor(logger: Logger, mediaService: MediaService, io: SocketIOServer) {
     this.logger = logger;
     this.mediaService = mediaService;
+    this.io = io;
   }
 
   async startStreamer(config: StartStreamerConfig): Promise<IAIStreamer> {
     const streamId = `ai-stream-${Date.now()}`;
     const aiUserId = `ai-user-${streamId}`;
 
-    // create mediasoup room + transport + producer
-    await this.mediaService.createRoom(streamId);
-    const { transport, rtpPort } = await this.mediaService.createPlainTransport(
-      streamId,
-      aiUserId,
-    );
-    const mediaSoupProducer = await this.mediaService.produceOnPlainTransport(
-      streamId,
-      aiUserId,
-      transport,
-      "audio",
-    );
-    const producerSsrc = mediaSoupProducer.rtpParameters.encodings[0].ssrc;
-    this.logger.info(`Created MediaSoup producer with SSRC: ${producerSsrc}`);
+    let audioProducer: AudioStreamProducer | null = null;
 
-    // start ffmpeg
-    const audioProducer = new AudioStreamProducer(this.logger);
-    await audioProducer.startStream(rtpPort, producerSsrc);
+    try {
+      // create mediasoup room + transport + producer
+      await this.mediaService.createRoom(streamId);
+      const { transport, rtpPort } =
+        await this.mediaService.createPlainTransport(streamId, aiUserId);
+      const mediaSoupProducer = await this.mediaService.produceOnPlainTransport(
+        streamId,
+        aiUserId,
+        transport,
+        "audio",
+      );
+      const producerSsrc = mediaSoupProducer.rtpParameters.encodings[0].ssrc;
+      this.logger.info(`Created MediaSoup producer with SSRC: ${producerSsrc}`);
 
-    // warm up rtp pipeline with silence
-    const silenceBuffer = Buffer.alloc(48000 * 2 * 0.1);
-    await audioProducer.streamSegment(silenceBuffer);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    this.logger.info("Warmed up RTP pipeline with silence");
+      // start ffmpeg
+      audioProducer = new AudioStreamProducer(this.logger);
+      await audioProducer.startStream(rtpPort, producerSsrc);
 
-    // create AIStreamer document
-    let ownerUser = await User.findById(config.ownerId);
-    if (!ownerUser) {
-      throw new Error(`User with ID ${config.ownerId} not found`);
+      // warm up rtp pipeline with silence
+      const silenceBuffer = Buffer.alloc(48000 * 2 * 0.1);
+      await audioProducer.streamSegment(silenceBuffer);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      this.logger.info("Warmed up RTP pipeline with silence");
+
+      // --- DB writes start here, any failure triggers cleanup ---
+      const ownerUser = await User.findById(config.ownerId);
+      if (!ownerUser)
+        throw new Error(`User with ID ${config.ownerId} not found`);
+
+      await Stream.deleteOne({ id: streamId });
+      await Stream.create({
+        id: streamId,
+        userId: ownerUser._id,
+        title: config.title || `🤖 ${config.persona} — ${config.topic}`,
+        description: `AI-generated stream on ${config.topic}`,
+        category: "technology",
+        tags: ["AI", "Live"],
+        isLive: true,
+        startedAt: new Date(),
+      });
+
+      const streamer = await AIStreamer.create({
+        ownerId: new Types.ObjectId(config.ownerId),
+        streamId,
+        topic: config.topic,
+        persona: config.persona,
+        voice: config.voice,
+        status: "live",
+        startedAt: new Date(),
+        config: {
+          idlePromptIntervalMs: config.idlePromptIntervalMs ?? 30000,
+          maxDurationMs: config.maxDurationMs ?? 3600000,
+        },
+      });
+
+      // store runtime state only after all DB writes succeed
+      const runtimeState: RuntimeState = {
+        audioProducer,
+        mediaSoupProducer,
+        roomId: streamId,
+        queue: [],
+        isSpeaking: false,
+        idleTimer: null,
+        maxDurationTimer: null,
+      };
+      this.activeStreamers.set(streamer.id, runtimeState);
+
+      this.generateOpeningMonologue(streamer, runtimeState).catch((err) =>
+        this.logger.error("Opening monologue error:", err),
+      );
+
+      this.resetIdleTimer(streamer, runtimeState);
+
+      runtimeState.maxDurationTimer = setTimeout(
+        () =>
+          this.stopStreamer(streamer.id).catch((err) =>
+            this.logger.error("Auto-stop error:", err),
+          ),
+        streamer.config.maxDurationMs,
+      );
+
+      this.logger.info(
+        `Started AI streamer ${streamer._id} for user ${config.ownerId}`,
+      );
+      return streamer;
+    } catch (err) {
+      this.logger.error(
+        "startStreamer failed, cleaning up partial resources:",
+        err,
+      );
+
+      // stop ffmpeg if it was started
+      if (audioProducer) {
+        try {
+          await audioProducer.endStream();
+        } catch {
+          audioProducer.cleanup();
+        }
+      }
+
+      // close mediasoup participant/room if created
+      try {
+        await this.mediaService.closeParticipant(streamId, aiUserId);
+      } catch (cleanupErr) {
+        this.logger.warn("Cleanup closeParticipant failed:", cleanupErr);
+      }
+
+      // remove any partial stream document
+      await Stream.deleteOne({ id: streamId }).catch(() => {});
+
+      throw err;
     }
-
-    await Stream.deleteOne({ id: streamId });
-    await Stream.create({
-      id: streamId,
-      userId: ownerUser._id,
-      title: config.title || `🤖 ${config.persona} — ${config.topic}`,
-      description: `AI-generated podcast on ${config.topic}`,
-      category: "technology",
-      tags: ["AI", "podcast"],
-      isLive: true,
-      startedAt: new Date(),
-    });
-
-    const streamer = await AIStreamer.create({
-      ownerId: new Types.ObjectId(config.ownerId),
-      streamId,
-      topic: config.topic,
-      persona: config.persona,
-      voice: config.voice,
-      status: "live",
-      startedAt: new Date(),
-      config: {
-        idlePromptIntervalMs: config.idlePromptIntervalMs || 30000,
-        maxDurationMs: config.maxDurationMs || 3600000,
-      },
-    });
-
-    // store runtime state
-    const runtimeState: RuntimeState = {
-      audioProducer,
-      mediaSoupProducer,
-      roomId: streamId,
-      queue: [],
-      isSpeaking: false,
-      idleTimer: null,
-      maxDurationTimer: null,
-    };
-    this.activeStreamers.set(streamer.id, runtimeState);
-
-    // generate and stream opening monologue (non-blocking)
-    this.generateOpeningMonologue(streamer, runtimeState).catch((err) =>
-      this.logger.error("Opening monologue error:", err),
-    );
-
-    // idle timer
-    this.resetIdleTimer(streamer, runtimeState);
-
-    // 8. Auto-stop after maxDurationMs
-    runtimeState.maxDurationTimer = setTimeout(
-      () =>
-        this.stopStreamer(streamer.id).catch((err) =>
-          this.logger.error("Auto-stop error:", err),
-        ),
-      streamer.config.maxDurationMs,
-    );
-    this.logger.info(
-      `Started AI streamer with ID ${streamer._id} for user ${config.ownerId}`,
-    );
-    return streamer;
   }
 
   async stopStreamer(streamerId: string): Promise<void> {
@@ -167,6 +195,9 @@ class AIStreamerService {
         `Error closing AI participant for streamer ${streamerId}: ${err instanceof Error ? err.message : "Unknown error"}`,
       );
     }
+
+    // notify viewers before closing
+    this.io.to(`room:${runtime.roomId}`).emit('stream-ended');
 
     // update db
     await AIStreamer.updateOne(
@@ -245,6 +276,11 @@ class AIStreamerService {
             `Error processing speech queue for streamer ${streamerId}: ${err instanceof Error ? err.message : "Unknown error"}`,
           );
         });
+      } else {
+        const streamer = await AIStreamer.findById(streamerId);
+        if (streamer && streamer.status === "live") {
+          this.resetIdleTimer(streamer, runtime);
+        }
       }
     }
   }
@@ -271,8 +307,10 @@ class AIStreamerService {
         { _id: streamerId },
         { lastSpokenAt: new Date() },
       );
+      // Emit subtitle to all viewers in the stream room
+      this.io.to(`room:${streamer.streamId}`).emit('ai-subtitle', { text });
       this.logger.info(`Streamed text for streamer ${streamerId}: "${text}"`);
-    } catch (err: Error | any) {
+    } catch (err: any) {
       if (err.code === "EPIPE" || err.message?.includes("EPIPE")) {
         this.logger.warn(
           `EPIPE error while streaming text for streamer ${streamerId}: ${err.message}`,
@@ -296,7 +334,7 @@ You just went live and your topic is: "${streamer.topic}".
 Write a short, energetic opening monologue (3-4 sentences). 
 Speak directly to viewers. Do not use stage directions or quotes. Just the spoken words.`;
 
-      const response = await GeminiService.generateRaw(prompt);
+      const response = await LLMService.generateRaw(prompt);
       this.enqueueSpeech(streamer.id, response);
     } catch (err) {
       this.logger.error("Opening monologue generation failed:", err);
@@ -319,7 +357,7 @@ Your stream topic is: "${streamer.topic}".
 A viewer named "${username}" just said in chat: "${message}"
 Respond naturally in 1-2 sentences. Speak directly. No stage directions, no quotes.`;
 
-      return await GeminiService.generateRaw(prompt);
+      return await LLMService.generateRaw(prompt);
     } catch (err) {
       this.logger.error("Chat response generation failed:", err);
       return `Thanks for the message, ${username}!`;
@@ -333,7 +371,7 @@ Your stream topic is: "${streamer.topic}".
 There's been a quiet moment. Say something interesting to fill the silence — a fact, opinion, or question for viewers.
 1-2 sentences. Speak directly. No stage directions, no quotes.`;
 
-      return await GeminiService.generateRaw(prompt);
+      return await LLMService.generateRaw(prompt);
     } catch (err) {
       this.logger.error("Idle filler generation failed:", err);
       return `Anyone have questions? Drop them in the chat!`;
@@ -351,7 +389,6 @@ There's been a quiet moment. Say something interesting to fill the silence — a
       }
       const text = await this.generateIdleFiller(streamer).catch(() => "");
       if (text) this.enqueueSpeech(streamer.id, text);
-      this.resetIdleTimer(streamer, runtime);
     }, streamer.config.idlePromptIntervalMs);
   }
 

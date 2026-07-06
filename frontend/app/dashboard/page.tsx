@@ -8,6 +8,7 @@ import { io, Socket } from "socket.io-client";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
+import toast from "react-hot-toast";
 
 interface Stream {
   id: string;
@@ -53,6 +54,8 @@ const formatDuration = (ms: number) => {
 const Dashboard = () => {
   const [viewerCounts, setViewerCounts] = useState<Record<string, number>>({});
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [activeAIStreamer, setActiveAIStreamer] = useState<{ streamerId: string; streamId: string } | null>(null);
+  const [stoppingAI, setStoppingAI] = useState(false);
   const { user, getSocketAuth } = useAuth();
   const router = useRouter();
   const socketInitialized = useRef(false);
@@ -86,6 +89,33 @@ const Dashboard = () => {
       }
     },
   });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("activeAIStreamer");
+    if (stored) {
+      try { setActiveAIStreamer(JSON.parse(stored)); } catch {}
+    }
+  }, []);
+
+  const stopAIStreamer = async () => {
+    if (!activeAIStreamer) return;
+    setStoppingAI(true);
+    try {
+      await api.post(`/api/ai-streamer/${activeAIStreamer.streamerId}/stop`);
+      localStorage.removeItem("activeAIStreamer");
+      setActiveAIStreamer(null);
+      toast.success("AI Streamer stopped");
+    } catch (err: any) {
+      if (err.response?.status === 404 || err.response?.status === 403) {
+        localStorage.removeItem("activeAIStreamer");
+        setActiveAIStreamer(null);
+      } else {
+        toast.error("Failed to stop AI streamer");
+      }
+    } finally {
+      setStoppingAI(false);
+    }
+  };
 
   const streams = streamsData || [];
   const error = streamsError
@@ -203,6 +233,31 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
+
+            {/* Active AI Streamer */}
+            {activeAIStreamer && (
+              <div className="bg-surface border border-primary/30 rounded-xl p-5 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-xl">🤖</div>
+                  <div>
+                    <p className="font-semibold text-text-primary">AI Streamer is live</p>
+                    <button
+                      onClick={() => router.push(`/watch/${activeAIStreamer.streamId}`)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Watch stream →
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={stopAIStreamer}
+                  disabled={stoppingAI}
+                  className="px-4 py-2 bg-accent-red hover:bg-accent-red/80 text-white rounded-lg font-semibold text-sm transition disabled:opacity-50"
+                >
+                  {stoppingAI ? "Stopping..." : "Stop AI"}
+                </button>
+              </div>
+            )}
 
             {/* Live / Pending streams */}
             <div>

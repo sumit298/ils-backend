@@ -76,12 +76,14 @@ class AudioStreamProducer {
         });
 
         this.ffmpegProcess.stdin.on('error', (err: NodeJS.ErrnoException) => {
-          this.isStreaming = false;
+          // this.isStreaming = false;
           if (err.code === 'EPIPE') {
             this.logger.info('FFmpeg stdin closed while stopping stream');
+            this.cleanup();
             return;
           }
           this.logger.error('FFmpeg stdin error:', err);
+          this.cleanup();
         });
 
         // Handle unexpected process exit

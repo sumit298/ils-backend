@@ -73,7 +73,7 @@ export async function initializeServices(
       chatService,
       r2Service,
       metricsService,
-      aiStreamerService: new AIStreamerService(logger, mediaService),
+      aiStreamerService: new AIStreamerService(logger, mediaService, io),
     };
   } catch (error) {
     logger.error("Failed to initialize services:", error);

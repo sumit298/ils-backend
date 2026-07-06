@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { Logger } from 'winston';
 import type AIStreamerService from '../services/AI/AIStreamerService';
+import AIStreamer from '../models/AIStreamer';
 
 interface AIStreamerControllerDeps {
   aiStreamerService: AIStreamerService;
@@ -19,18 +20,18 @@ class AIStreamerController {
   // POST /api/ai-streamer/start
   start = async (req: Request, res: Response) => {
     try {
-      const { ownerId, topic, persona, voice, title, idlePromptIntervalMs, maxDurationMs } = req.body;
+      const { topic, persona, voice, title, idlePromptIntervalMs, maxDurationMs } = req.body;
 
-      if (!ownerId || !topic || !persona) {
-        return res.status(400).json({ error: 'ownerId, topic, and persona are required' });
+      if (!topic || !persona) {
+        return res.status(400).json({ error: 'topic and persona are required' });
       }
 
       const streamer = await this.aiStreamerService.startStreamer({
-        ownerId,
+        ownerId: req.userId,   // always from auth token, never from body
         topic,
         persona,
         voice: voice || 'male',
-        title: title || `🤖 ${persona} — ${topic}`,
+        title,
         idlePromptIntervalMs,
         maxDurationMs,
       });
@@ -39,7 +40,7 @@ class AIStreamerController {
         success: true,
         streamerId: streamer.id,
         streamId: streamer.streamId,
-        url: `http://localhost:3000/watch/${streamer.streamId}`,
+        url: `${process.env.FRONTEND_URL}/watch/${streamer.streamId}`,
       });
     } catch (err) {
       this.logger.error('Failed to start AI streamer:', err);
@@ -51,6 +52,15 @@ class AIStreamerController {
   stop = async (req: Request, res: Response) => {
     try {
       const id = req.params.id as string;
+
+      const streamer = await AIStreamer.findById(id);
+      if (!streamer) {
+        return res.status(404).json({ error: 'AI streamer not found' });
+      }
+      if (streamer.ownerId.toString() !== req.userId) {
+        return res.status(403).json({ error: 'Not authorized to stop this streamer' });
+      }
+
       await this.aiStreamerService.stopStreamer(id);
       res.json({ success: true });
     } catch (err) {
@@ -61,9 +71,22 @@ class AIStreamerController {
 
   // GET /api/ai-streamer/:id/status
   status = async (req: Request, res: Response) => {
-    const id = req.params.id as string;
-    const active = this.aiStreamerService.isActive(id);
-    res.json({ active, streamerId: id });
+    try {
+      const id = req.params.id as string;
+
+      const streamer = await AIStreamer.findById(id);
+      if (!streamer) {
+        return res.status(404).json({ error: 'AI streamer not found' });
+      }
+      if (streamer.ownerId.toString() !== req.userId) {
+        return res.status(403).json({ error: 'Not authorized to view this streamer' });
+      }
+
+      res.json({ active: this.aiStreamerService.isActive(id), streamerId: id });
+    } catch (err) {
+      this.logger.error('Failed to get AI streamer status:', err);
+      res.status(500).json({ error: 'Failed to get status' });
+    }
   };
 }
 
