@@ -9,6 +9,7 @@ import ChatService from "../services/ChatService";
 import R2Service from "../services/R2Service";
 import { connectDatabase } from "./db";
 import MetricsService from "@services/MetricsService";
+import AIStreamerService from "@services/AI/AIStreamerService";
 
 export interface Services {
   mediaService: MediaService;
@@ -18,6 +19,7 @@ export interface Services {
   chatService: ChatService;
   r2Service: R2Service;
   metricsService: MetricsService;
+  aiStreamerService: AIStreamerService;
 }
 
 export async function initializeServices(
@@ -71,6 +73,7 @@ export async function initializeServices(
       chatService,
       r2Service,
       metricsService,
+      aiStreamerService: new AIStreamerService(logger, mediaService, io),
     };
   } catch (error) {
     logger.error("Failed to initialize services:", error);

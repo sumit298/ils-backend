@@ -41,7 +41,7 @@ type TransportDirection = "send" | "recv";
  */
 interface Participant {
   id: string;
-  transports: Map<string, WebRtcTransport>;
+  transports: Map<string, WebRtcTransport> | any;
   producers: Map<string, Producer>;
   consumers: Map<string, Consumer>;
   joinedAt: number;
@@ -247,6 +247,7 @@ class MediaService {
        */
       worker.on("died", async () => {
         this.logger.error(`Worker ${index} died, respawning...`);
+        this.removeRoomsForWorker(index);
         await this.respawnWorker(index);
       });
 
@@ -255,6 +256,25 @@ class MediaService {
     } catch (error) {
       this.logger.error(`Failed to create worker ${index}:`, error);
       throw error;
+    }
+  }
+
+  private removeRoomsForWorker(workerIndex: number): void {
+    for (const [roomId, room] of this.rooms) {
+      if (room.workerIndex !== workerIndex) {
+        continue;
+      }
+
+      try {
+        if (!room.router.closed) {
+          room.router.close();
+        }
+      } catch (error) {
+        this.logger.warn(`Error closing stale room ${roomId}:`, error);
+      }
+
+      this.rooms.delete(roomId);
+      this.logger.warn(`Room ${roomId} removed because worker ${workerIndex} is closed`);
     }
   }
 
@@ -420,7 +440,17 @@ class MediaService {
   async createRoom(roomId: string): Promise<Room> {
     // LEARNING: Idempotent - safe to call multiple times
     if (this.rooms.has(roomId)) {
-      return this.rooms.get(roomId)!;
+      const existingRoom = this.rooms.get(roomId)!;
+      const worker = this.workers[existingRoom.workerIndex];
+
+      if (!existingRoom.router.closed && worker && !worker.closed) {
+        return existingRoom;
+      }
+
+      this.logger.warn(
+        `Room ${roomId} has a closed router/worker; removing stale room before recreating`,
+      );
+      this.rooms.delete(roomId);
     }
     const worker = this.getNextWorker();
 
@@ -549,6 +579,113 @@ class MediaService {
         `Failed to create WebRTC transport for user ${userId}:`,
         error,
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Create PlainTransport for server-side RTP injection
+   * Used by AI streamers to inject audio directly
+   *
+   * Returns: transport object and RTP port number
+   */
+  async createPlainTransport(
+    roomId: string,
+    userId: string,
+  ): Promise<{ transport: any; rtpPort: number; rtcpPort: number }> {
+    try {
+      const room = await this.createRoom(roomId);
+
+      const transport = await room.router.createPlainTransport({
+        listenIp: { ip: "0.0.0.0", announcedIp: "127.0.0.1" },
+        rtcpMux: false, // separate rtp and rtcp ports,
+        comedia: true,
+      });
+
+      this.logger.info(
+        `PlainTransport created: ${transport.id} - RTP: ${transport.tuple.localPort}, RTCP: ${transport.rtcpTuple?.localPort}`,
+      );
+
+      let participant = room.participants.get(userId);
+      if (!participant) {
+        participant = {
+          id: userId,
+          transports: new Map(),
+          producers: new Map(),
+          consumers: new Map(),
+          joinedAt: Date.now(),
+        };
+        room.participants.set(userId, participant);
+      }
+      participant.transports.set(transport.id, transport);
+
+      return {
+        transport,
+        rtpPort: transport.tuple.localPort,
+        rtcpPort: transport.rtcpTuple?.localPort || 0,
+      };
+    } catch (error) {
+      this.logger.error("Failed to create PlainTransport:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create producer on PlainTransport for AI audio
+   *
+   * Returns: Producer object that viewers can consume
+   */
+  async produceOnPlainTransport(
+    roomId: string,
+    userId: string,
+    transport: any,
+    kind: "audio" | "video",
+  ): Promise<any> {
+    try {
+      const room = this.rooms.get(roomId);
+      if (!room) throw new Error("Room not found");
+
+      const participant = room.participants.get(userId);
+      if (!participant) throw new Error("Participant not found");
+
+      // RTP parameters for Opus audio
+      const rtpParameters = {
+        codecs: [
+          {
+            mimeType: "audio/opus",
+            clockRate: 48000,
+            channels: 2,
+            payloadType: 111,
+            parameters: {
+              "sprop-stereo": 1,
+              useinbandfec: 1,
+            },
+          },
+        ],
+        encodings: [{ ssrc: Math.floor(Math.random() * 100000000) }],
+        rtcp: { cname: `ai-${userId}` },
+      };
+
+      // Create producer on PlainTransport
+      const producer = await transport.produce({
+        kind,
+        rtpParameters,
+        appData: { userId, kind, isAI: true },
+      });
+
+      participant.producers.set(producer.id, producer);
+
+      producer.on("transportclose", () => {
+        producer.close();
+        participant.producers.delete(producer.id);
+      });
+
+      this.logger.info(
+        `AI Producer created: ${producer.id} (${kind}) for user ${userId}`,
+      );
+      return producer;
+    } catch (error) {
+      this.logger.error("Failed to create AI producer:", error);
       throw error;
     }
   }

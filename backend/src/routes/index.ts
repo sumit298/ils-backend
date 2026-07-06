@@ -7,10 +7,14 @@ import followRoutes from "./follow.routes";
 import notificationRoutes from "./notification.routes";
 import vodRoutes from "./vod.routes";
 import metricsRoutes from "./metrics.routes";
+import aiPodcastRoutes from "./ai-podcast.routes";
+import createAIStreamerRoutes from "./ai-streamer.routes";
 import type StreamService from "@services/StreamService";
 import type ChatService from "@services/ChatService";
 import type CacheService from "@services/CacheService";
 import type R2Service from "@services/R2Service";
+import type MediaService from "@services/MediaService";
+import type AIStreamerService from "@services/AI/AIStreamerService";
 import Logger from "@utils/logger";
 
 interface RegisterRoutesOptions {
@@ -18,13 +22,21 @@ interface RegisterRoutesOptions {
   chatService: ChatService;
   cacheService: CacheService;
   r2Service: R2Service;
+  mediaService: MediaService;
+  aiStreamerService: AIStreamerService;
 }
 
 export const registerRoutes = (
   app: Application,
   services: RegisterRoutesOptions,
 ): void => {
-  const { streamService, chatService, cacheService, r2Service } = services;
+  const {
+    streamService,
+    chatService,
+    cacheService,
+    r2Service,
+    aiStreamerService,
+  } = services;
 
   // Metrics endpoint (no auth required, for Prometheus scraping)
   app.use("/metrics", metricsRoutes);
@@ -65,6 +77,15 @@ export const registerRoutes = (
       next();
     },
     vodRoutes,
+  );
+
+  // AI Podcast routes
+  app.use("/api/ai-podcast", aiPodcastRoutes);
+
+  // AI Streamer routes
+  app.use(
+    "/api/ai-streamer",
+    createAIStreamerRoutes({ aiStreamerService, logger: Logger }),
   );
 
   Logger.info("All routes registered successfully");

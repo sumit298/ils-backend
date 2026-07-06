@@ -50,6 +50,7 @@ const WatchPage = () => {
   );
   const [streamerInfo, setStreamerInfo] = useState<any>(null);
 
+  const audioCtxRef = useRef<AudioContext | null>(null);
   // Sync state to ref
   useEffect(() => {
     consumedProducersRef.current = consumedProducers;
@@ -61,16 +62,26 @@ const WatchPage = () => {
   const dragStart = useRef({ x: 0, y: 0 });
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAudioOnly, setIsAudioOnly] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [subtitle, setSubtitle] = useState<string | null>(null);
+  const subtitleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const analyserRafRef = useRef<number | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(true);
 
   const toggleMute = () => {
     const newMutedState = !isMuted;
 
-    // On first unmute, add audio track to stream
+    // On first unmute, add audio track to stream (guard against duplicate)
     if (isMuted && audioConsumerRef.current && cameraStreamRef.current) {
       const audioTrack = audioConsumerRef.current.track;
-      cameraStreamRef.current.addTrack(audioTrack);
-      console.log("🔊 [UNMUTE] Audio track added to stream");
+      const alreadyInStream = cameraStreamRef.current
+        .getTracks()
+        .includes(audioTrack);
+      if (!alreadyInStream) {
+        cameraStreamRef.current.addTrack(audioTrack);
+        console.log("🔊 [UNMUTE] Audio track added to stream");
+      }
     }
 
     setIsMuted(newMutedState);
@@ -303,8 +314,16 @@ const WatchPage = () => {
           "🛑 [EVENT] stream-ended received at:",
           new Date().toISOString(),
         );
+        localStorage.removeItem("activeAIStreamer");
         setStreamEnded(true);
         toast.error("Stream has ended", { position: "bottom-left" });
+      });
+
+      newSocket.on("ai-subtitle", ({ text }: { text: string }) => {
+        setSubtitle(text);
+        if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
+        // Keep subtitle visible for ~6s or until next one arrives
+        subtitleTimerRef.current = setTimeout(() => setSubtitle(null), 6000);
       });
 
       newSocket.on("error", (error) => {
@@ -329,12 +348,20 @@ const WatchPage = () => {
         "🧹 [CLEANUP] Cleaning up socket listeners at:",
         new Date().toISOString(),
       );
+
+      if (analyserRafRef.current) cancelAnimationFrame(analyserRafRef.current);
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch((e) => {});
+        audioCtxRef.current = null;
+      }
+      if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
       socket?.off("connect");
       socket?.off("viewer-count");
       socket?.off("existing-producers");
       socket?.off("new-producer");
       socket?.off("stream-start-time");
       socket?.off("stream-ended");
+      socket?.off("ai-subtitle");
       socket?.off("error");
       socket?.close();
     };
@@ -964,10 +991,11 @@ const WatchPage = () => {
             `✅ [VIEWER] Audio consumer resumed (${(performance.now() - t7).toFixed(0)}ms)`,
           );
 
-          // Store audio consumer but DON'T add track yet
+          // For audio-only streams, add the track directly to stream
+          stream.addTrack(consumer.track);
           audioConsumerRef.current = consumer;
           setConsumedProducers((prev) => new Set(prev).add(audioProducer.id));
-          console.log("🎵 [VIEWER] Audio consumer stored (will add on unmute)");
+          console.log("🎵 [VIEWER] Audio track added to stream");
         }
       }
 
@@ -976,7 +1004,53 @@ const WatchPage = () => {
         (p: any) => p.kind === "video",
       );
       if (!videoProducer) {
-        throw new Error("No camera video producer found");
+        // No video - audio-only stream (like AI streamer)
+        console.log("[VIEWER] Audio-only stream detected, skipping video");
+
+        // Store camera stream with audio only
+        cameraStreamRef.current = stream;
+        setCameraStream(stream);
+        setIsAudioOnly(true);
+        setIsLoading(false);
+
+        // Wait for next tick to ensure DOM is ready
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Play the audio through the video element (audio works without video track)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = isMuted;
+          await videoRef.current.play().catch((e) => {
+            console.log("Audio play deferred (will play on unmute):", e.name);
+          });
+        }
+
+        toast.success("Connected to audio stream - Click unmute to hear!", {
+          position: "bottom-left",
+        });
+        console.log("✓ [VIEWER] Audio-only stream ready - unmute to hear");
+
+        // Start audio analyser to detect speaking
+        try {
+          const audioCtx = new AudioContext();
+          audioCtxRef.current = audioCtx;
+          const source = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          const detect = () => {
+            analyser.getByteFrequencyData(data);
+            const avg = data.reduce((a, b) => a + b, 0) / data.length;
+            setIsSpeaking(avg > 8);
+            analyserRafRef.current = requestAnimationFrame(detect);
+          };
+          analyserRafRef.current = requestAnimationFrame(detect);
+        } catch (e) {
+          console.warn("[VIEWER] Audio analyser failed:", e);
+        }
+
+        return;
       }
 
       const t8 = performance.now();
@@ -1097,6 +1171,11 @@ const WatchPage = () => {
   };
 
   const leaveStream = () => {
+    if (analyserRafRef.current) cancelAnimationFrame(analyserRafRef.current);
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch((e) => {});
+      audioCtxRef.current = null;
+    }
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
@@ -1183,7 +1262,9 @@ const WatchPage = () => {
                 <span className="text-white text-sm font-medium">
                   {streamerInfo.username}
                 </span>
-                <FollowButton userId={streamerInfo._id || streamerInfo.id} />
+                {user?.id !== (streamerInfo._id || streamerInfo.id) && (
+                  <FollowButton userId={streamerInfo._id || streamerInfo.id} />
+                )}
               </div>
             )}
           </div>
@@ -1223,6 +1304,15 @@ const WatchPage = () => {
               </svg>
             </button>
           </div>
+          {/* AI Subtitle overlay */}
+          {subtitle && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 max-w-2xl w-full px-4 pointer-events-none">
+              <div className="bg-black/75 backdrop-blur-sm text-white text-center text-sm md:text-base font-medium px-5 py-3 rounded-xl leading-relaxed">
+                {subtitle}
+              </div>
+            </div>
+          )}
+
           {screenProducerIds.current.size > 0 ? (
             /* Screen Share with Camera PiP */
             <div
@@ -1400,8 +1490,57 @@ const WatchPage = () => {
                 autoPlay
                 playsInline
                 muted={isMuted}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover ${isAudioOnly ? "hidden" : ""}`}
               />
+              {isAudioOnly && !isLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 gap-6">
+                  <div className="relative w-32 h-32">
+                    {isSpeaking && (
+                      <span className="absolute inset-0 rounded-full animate-ping bg-primary/30" />
+                    )}
+                    <div className="w-full h-full rounded-full overflow-hidden ring-4 ring-primary/50">
+                      <img
+                        src={getAvatarUrl(
+                          streamerInfo?.avatar,
+                          streamerInfo?.username,
+                        )}
+                        alt={streamerInfo?.username || "AI Streamer"}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="absolute bottom-1 right-1 w-5 h-5 bg-accent-red rounded-full border-2 border-gray-900 flex items-center justify-center">
+                      <span className="w-2 h-2 bg-white rounded-full live-dot" />
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-white font-bold text-lg">
+                      {streamerInfo?.username || "AI Streamer"}
+                    </p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      Audio-only stream
+                    </p>
+                  </div>
+                  {isMuted && (
+                    <button
+                      onClick={toggleMute}
+                      className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-full font-semibold text-sm transition flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Unmute to hear
+                    </button>
+                  )}
+                </div>
+              )}
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
                   <div className="text-center">

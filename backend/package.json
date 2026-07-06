@@ -13,11 +13,14 @@
     "docker:logs": "docker-compose logs -f",
     "docker:clean": "docker-compose down -v",
     "seed": "tsx seed-data.js",
-    "worker": "tsx --env-file=.env.local src/workers/vodWorker.ts"
+    "worker": "tsx --env-file=.env.local src/workers/vodWorker.ts",
+    "test:ai-stream": "tsx --env-file=.env.local src/services/AI/test-ai-stream.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",
     "@aws-sdk/s3-request-presigner": "^3.989.0",
+    "@google-cloud/text-to-speech": "^6.4.1",
+    "@google/genai": "^2.10.0",
     "amqplib": "^1.0.3",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",

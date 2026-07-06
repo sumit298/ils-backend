@@ -11,6 +11,8 @@ import type StreamService from '../services/StreamService';
 import type ChatService from '../services/ChatService';
 import type R2Service from '../services/R2Service';
 import type MessageQueue from '../services/MessageQueue';
+import type AIStreamerService from '../services/AI/AIStreamerService';
+import type MetricsService from '../services/MetricsService';
 import fs from 'fs';
 
 interface Services {
@@ -19,6 +21,8 @@ interface Services {
   chatService: ChatService;
   r2Service: R2Service;
   messageQueue: MessageQueue;
+  aiStreamerService: AIStreamerService;
+  metricsService: MetricsService;
 }
 
 interface ActiveConnection {
@@ -88,6 +92,7 @@ export function initializeSocketHandlers(
     registerChatHandlers(authSocket, {
       chatService: services.chatService,
       logger,
+      aiStreamerService: services.aiStreamerService,
     }, io, chatRateLimits);
 
     registerRecordingHandlers(authSocket, {
