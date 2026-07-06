@@ -14,6 +14,7 @@ import type ChatService from "@services/ChatService";
 import type CacheService from "@services/CacheService";
 import type R2Service from "@services/R2Service";
 import type MediaService from "@services/MediaService";
+import type AIStreamerService from "@services/AI/AIStreamerService";
 import Logger from "@utils/logger";
 
 interface RegisterRoutesOptions {
@@ -22,13 +23,20 @@ interface RegisterRoutesOptions {
   cacheService: CacheService;
   r2Service: R2Service;
   mediaService: MediaService;
+  aiStreamerService: AIStreamerService;
 }
 
 export const registerRoutes = (
   app: Application,
   services: RegisterRoutesOptions,
 ): void => {
-  const { streamService, chatService, cacheService, r2Service, mediaService } = services;
+  const {
+    streamService,
+    chatService,
+    cacheService,
+    r2Service,
+    aiStreamerService,
+  } = services;
 
   // Metrics endpoint (no auth required, for Prometheus scraping)
   app.use("/metrics", metricsRoutes);
@@ -75,7 +83,10 @@ export const registerRoutes = (
   app.use("/api/ai-podcast", aiPodcastRoutes);
 
   // AI Streamer routes
-  app.use("/api/ai-streamer", createAIStreamerRoutes({ mediaService, logger: Logger }));
+  app.use(
+    "/api/ai-streamer",
+    createAIStreamerRoutes({ aiStreamerService, logger: Logger }),
+  );
 
   Logger.info("All routes registered successfully");
 };

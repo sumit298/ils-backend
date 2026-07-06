@@ -1,14 +1,16 @@
-import type { Socket, Server as SocketIOServer } from "socket.io";
+import type { Server as SocketIOServer } from "socket.io";
 import type { Logger } from "winston";
 import ChatService from "@services/ChatService";
 import { Stream, User, Notification } from "@models/index";
 import { incrementChatMessages } from "@utils/streamStats";
-import { SocketAddress } from "node:net";
 import { AuthenticatedSocket } from "@appTypes/socket.types";
+import AIStreamer from "@models/AIStreamer";
+import type AIStreamerService from "@services/AI/AIStreamerService";
 
 interface Services {
   chatService: ChatService;
   logger: Logger;
+  aiStreamerService: AIStreamerService;
 }
 
 interface JoinChatData {
@@ -51,11 +53,6 @@ interface AnnounceData {
 interface RateLimit {
   count: number;
   resetAt: number;
-}
-
-interface SocketUser {
-  username: string;
-  _id: string;
 }
 
 export function registerChatHandlers(
@@ -114,9 +111,12 @@ export function registerChatHandlers(
         }
 
         // Get username from socket.data or socket.user
-        const username = socket.data?.username || socket.user?.username || "Anonymous";
-        
-        logger.info(`[CHAT] Sending message - userId: ${socket.userId}, username from socket.data: ${socket.data?.username}, username from socket.user: ${socket.user?.username}, final username: ${username}`);
+        const username =
+          socket.data?.username || socket.user?.username || "Anonymous";
+
+        logger.info(
+          `[CHAT] Sending message - userId: ${socket.userId}, username from socket.data: ${socket.data?.username}, username from socket.user: ${socket.user?.username}, final username: ${username}`,
+        );
 
         const message = await chatService.sendMessage(
           socket.userId,
@@ -150,6 +150,19 @@ export function registerChatHandlers(
           }
         }
         io.to(`room:${data.roomId}`).emit("new-message", message);
+
+        // Forward chat to any active AI streamer in this room
+        if (services.aiStreamerService) {
+          const aiStreamer = await AIStreamer.findOne({
+            streamId: data.roomId,
+            status: "live",
+          });
+          if (aiStreamer) {
+            services.aiStreamerService
+              .handleChatMessage(aiStreamer.id, username, data.content)
+              .catch((err) => logger.error("AI chat handler error:", err));
+          }
+        }
       } catch (error) {
         const err = error as Error;
         logger.error("Send message error", error);

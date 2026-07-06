@@ -85,6 +85,20 @@ Return ONLY the JSON array, no other text.
     
     return script;
   }
+
+  async generateRaw(prompt:string): Promise<string> {
+    const response = await this.ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    const text = response.text?.trim() || '';
+    if (!text) {
+      throw new Error('Failed to generate content from Gemini');
+    }
+
+    return text;
+  }
 }
 
 export default new GeminiService();
