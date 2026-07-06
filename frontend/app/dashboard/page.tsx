@@ -54,7 +54,10 @@ const formatDuration = (ms: number) => {
 const Dashboard = () => {
   const [viewerCounts, setViewerCounts] = useState<Record<string, number>>({});
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [activeAIStreamer, setActiveAIStreamer] = useState<{ streamerId: string; streamId: string } | null>(null);
+  const [activeAIStreamer, setActiveAIStreamer] = useState<{
+    streamerId: string;
+    streamId: string;
+  } | null>(null);
   const [stoppingAI, setStoppingAI] = useState(false);
   const { user, getSocketAuth } = useAuth();
   const router = useRouter();
@@ -93,7 +96,11 @@ const Dashboard = () => {
   useEffect(() => {
     const stored = localStorage.getItem("activeAIStreamer");
     if (stored) {
-      try { setActiveAIStreamer(JSON.parse(stored)); } catch {}
+      try {
+        setActiveAIStreamer(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem("activeAIStreamer");
+      }
     }
   }, []);
 
@@ -238,11 +245,17 @@ const Dashboard = () => {
             {activeAIStreamer && (
               <div className="bg-surface border border-primary/30 rounded-xl p-5 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-xl">🤖</div>
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-xl">
+                    🤖
+                  </div>
                   <div>
-                    <p className="font-semibold text-text-primary">AI Streamer is live</p>
+                    <p className="font-semibold text-text-primary">
+                      AI Streamer is live
+                    </p>
                     <button
-                      onClick={() => router.push(`/watch/${activeAIStreamer.streamId}`)}
+                      onClick={() =>
+                        router.push(`/watch/${activeAIStreamer.streamId}`)
+                      }
                       className="text-xs text-primary hover:underline"
                     >
                       Watch stream →

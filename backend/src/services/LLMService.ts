@@ -1,19 +1,19 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from "@google/genai";
 
 // LLM_PROVIDER=gemini (default) | ollama
 // LLM_MODEL=gemini-2.0-flash | llama3.2 | mistral | etc.
 // OLLAMA_BASE_URL=http://localhost:11434 (default)
 
-type Provider = 'gemini' | 'ollama';
+type Provider = "gemini" | "ollama";
 
 interface ScriptTurn {
-  speaker: 'A' | 'B';
+  speaker: "A" | "B";
   text: string;
 }
 
 interface GenerateScriptOptions {
   topic: string;
-  duration: '5min' | '10min' | '15min';
+  duration: "5min" | "10min" | "15min";
   knowledgeBase?: string;
 }
 
@@ -22,62 +22,97 @@ class LLMService {
   private model: string;
   private ollamaBaseUrl: string;
   private geminiAI: GoogleGenAI | null = null;
+  private requestTimeoutMs: number;
 
   constructor() {
-    this.provider = (process.env.LLM_PROVIDER as Provider) || 'gemini';
-    this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    this.provider = (process.env.LLM_PROVIDER as Provider) || "gemini";
+    this.ollamaBaseUrl =
+      process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    this.requestTimeoutMs = this.getRequestTimeoutMs();
 
-    if (this.provider === 'ollama') {
-      this.model = process.env.LLM_MODEL || 'llama3.2';
+    if (this.provider === "ollama") {
+      this.model = process.env.LLM_MODEL || "llama3.2";
     } else {
       // gemini default — use 2.0-flash for high-frequency calls (AI streamer)
-      this.model = process.env.LLM_MODEL || 'gemini-2.0-flash';
+      this.model = process.env.LLM_MODEL || "gemini-2.0-flash";
       if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY not found in environment variables');
+        throw new Error("GEMINI_API_KEY not found in environment variables");
       }
       this.geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     }
   }
 
   private async callGemini(prompt: string): Promise<string> {
-    if (!this.geminiAI) throw new Error('Gemini client not initialized');
+    if (!this.geminiAI) throw new Error("Gemini client not initialized");
     const response = await this.geminiAI.models.generateContent({
       model: this.model,
       contents: prompt,
+      config: {
+        httpOptions: { timeout: this.requestTimeoutMs },
+      },
     });
-    const text = response.text?.trim() || '';
-    if (!text) throw new Error('Empty response from Gemini');
+    const text = response.text?.trim() || "";
+    if (!text) throw new Error("Empty response from Gemini");
     return text;
   }
 
   private async callOllama(prompt: string): Promise<string> {
-    const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: this.model,
-        prompt,
-        stream: false,
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      this.requestTimeoutMs,
+    );
 
-    if (!response.ok) {
-      throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: this.model,
+          prompt,
+          stream: false,
+        }),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          `Ollama request timed out after ${this.requestTimeoutMs}ms`,
+        );
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
 
-    const data = await response.json() as { response: string };
-    const text = data.response?.trim() || '';
-    if (!text) throw new Error('Empty response from Ollama');
+    if (!response.ok) {
+      throw new Error(
+        `Ollama request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data = (await response.json()) as { response: string };
+    const text = data.response?.trim() || "";
+    if (!text) throw new Error("Empty response from Ollama");
     return text;
   }
 
   async generateRaw(prompt: string): Promise<string> {
-    if (this.provider === 'ollama') return this.callOllama(prompt);
+    if (this.provider === "ollama") return this.callOllama(prompt);
     return this.callGemini(prompt);
   }
 
+  private getRequestTimeoutMs(): number {
+    const timeout = Number(process.env.LLM_REQUEST_TIMEOUT_MS || 120000);
+    if (!Number.isFinite(timeout) || timeout <= 0) {
+      throw new Error("LLM_REQUEST_TIMEOUT_MS must be a positive number");
+    }
+    return timeout;
+  }
+
   private getTurnCount(duration: string): number {
-    const counts = { '5min': 10, '10min': 18, '15min': 26 };
+    const counts = { "5min": 11, "10min": 19, "15min": 27 };
     return counts[duration as keyof typeof counts] || 10;
   }
 
@@ -86,7 +121,7 @@ class LLMService {
 
     const prompt = `You are a professional podcast script writer. Generate a natural, engaging ${options.duration} conversation between two podcast hosts (Host A and Host B) about: "${options.topic}"
 
-${options.knowledgeBase ? `IMPORTANT - Use this knowledge base as your primary source:\n${options.knowledgeBase}\n\nStay strictly within the provided context. Do not add external information.\n` : ''}
+${options.knowledgeBase ? `IMPORTANT - Use this knowledge base as your primary source:\n${options.knowledgeBase}\n\nStay strictly within the provided context. Do not add external information.\n` : ""}
 Requirements:
 - Exactly ${turnCount} turns total (alternating between speakers)
 - Each turn should be 2-4 sentences
@@ -108,23 +143,51 @@ Return ONLY the JSON array, no other text.`;
     // For script generation always use gemini-2.5-flash if on gemini provider
     // (better structured output), override model temporarily
     let text: string;
-    if (this.provider === 'gemini' && this.geminiAI) {
+    if (this.provider === "gemini" && this.geminiAI) {
       const response = await this.geminiAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: "gemini-2.5-flash",
         contents: prompt,
+        config: {
+          httpOptions: { timeout: this.requestTimeoutMs },
+        },
       });
-      text = response.text?.trim() || '';
+      text = response.text?.trim() || "";
     } else {
       text = await this.generateRaw(prompt);
     }
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('Failed to parse script from LLM response');
+    if (!jsonMatch) throw new Error("Failed to parse script from LLM response");
 
-    const script: ScriptTurn[] = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(script) || script.length === 0) throw new Error('Invalid script format');
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch {
+      throw new Error("Failed to parse script JSON from LLM response");
+    }
 
-    return script;
+    if (!Array.isArray(parsed) || parsed.length !== turnCount) {
+      throw new Error("Invalid script format");
+    }
+
+    return parsed.map((turn, index): ScriptTurn => {
+      const expectedSpeaker: ScriptTurn["speaker"] =
+        index % 2 === 0 ? "A" : "B";
+      if (typeof turn !== "object" || turn === null) {
+        throw new Error("Invalid script turn format");
+      }
+
+      const { speaker, text } = turn as { speaker?: unknown; text?: unknown };
+      if (
+        speaker !== expectedSpeaker ||
+        typeof text !== "string" ||
+        !text.trim()
+      ) {
+        throw new Error("Invalid script turn format");
+      }
+
+      return { speaker: expectedSpeaker, text: text.trim() };
+    });
   }
 }
 
