@@ -145,7 +145,7 @@ Return ONLY the JSON array, no other text.`;
     let text: string;
     if (this.provider === "gemini" && this.geminiAI) {
       const response = await this.geminiAI.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: process.env.LLM_MODEL || "gemini-3.1-flash-lite",
         contents: prompt,
         config: {
           httpOptions: { timeout: this.requestTimeoutMs },
