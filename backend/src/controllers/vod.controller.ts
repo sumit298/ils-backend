@@ -16,6 +16,8 @@ import { Stream } from "../models/index";
 
 const RECORDINGS_ROOT = "/tmp/recordings";
 const RESOLVED_RECORDINGS_ROOT = path.resolve(RECORDINGS_ROOT);
+const UPLOAD_TMP_ROOT = "/tmp";
+const RESOLVED_UPLOAD_TMP_ROOT = path.resolve(UPLOAD_TMP_ROOT);
 // Allowlist: UUID-timestamp only
 const RECORDING_ID_RE =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-\d+$/i;
@@ -217,8 +219,16 @@ const VodController = {
         throw new ValidationError("Invalid recording path");
       }
 
-      await fs.appendFile(filePath, await fs.readFile(chunk.path));
-      await fs.unlink(chunk.path);
+      const resolvedChunkPath = path.resolve(chunk.path);
+      if (
+        resolvedChunkPath !== RESOLVED_UPLOAD_TMP_ROOT &&
+        !resolvedChunkPath.startsWith(RESOLVED_UPLOAD_TMP_ROOT + path.sep)
+      ) {
+        throw new ValidationError("Invalid chunk path");
+      }
+
+      await fs.appendFile(filePath, await fs.readFile(resolvedChunkPath));
+      await fs.unlink(resolvedChunkPath);
 
       Logger.info(`Chunk uploaded for recording: ${recordingId}`);
 
