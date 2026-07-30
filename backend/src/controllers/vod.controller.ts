@@ -200,7 +200,7 @@ const VodController = {
       }
 
       const stream = await Stream.findOne({
-        id: streamId,
+        id: { $eq: streamId },
         userId: req.userId,
       });
 
