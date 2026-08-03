@@ -228,7 +228,15 @@ const VodController = {
         throw new ValidationError("Invalid chunk index");
       }
 
-      const resolvedChunkPath = path.resolve(chunk.path);
+      const chunkFilename = path.basename(chunk.path);
+      if (!chunkFilename || chunkFilename === "." || chunkFilename === "..") {
+        throw new ValidationError("Invalid upload temp file path");
+      }
+
+      const resolvedChunkPath = path.resolve(
+        RESOLVED_UPLOAD_TMP_ROOT,
+        chunkFilename,
+      );
       if (
         resolvedChunkPath !== RESOLVED_UPLOAD_TMP_ROOT &&
         !resolvedChunkPath.startsWith(RESOLVED_UPLOAD_TMP_ROOT + path.sep)
