@@ -619,7 +619,7 @@ const StreamsPage = ({ isStreamer = true }) => {
   };
 
   const toggleRecording = async () => {
-    if (mediaRecorder && recordingIdRef.current) {
+    if (isRecording &&mediaRecorder && recordingIdRef.current) {
       const id = recordingIdRef.current;
       const startTime = recordingStartTimeRef.current;
       mediaRecorder.onstop = async () => {
@@ -640,8 +640,11 @@ const StreamsPage = ({ isStreamer = true }) => {
       recordingIdRef.current = null;
       recordingStartTimeRef.current = null;
       toast.success("Recording stopped", { position: "bottom-left" });
+      setIsRecording(false);
     }
-    setIsRecording(false);
+    else {
+      startRecording();
+    }
   };
 
   const makeChunkHandler =

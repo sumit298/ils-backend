@@ -225,6 +225,7 @@ const VodController = {
 
       const chunkIndex = parseInt(req.body.chunkIndex ?? '0', 10);
       if (Number.isNaN(chunkIndex) || chunkIndex < 0) {
+        await fs.unlink(chunk.path).catch(() => {}); // Clean up the uploaded temp file
         throw new ValidationError("Invalid chunk index");
       }
 
