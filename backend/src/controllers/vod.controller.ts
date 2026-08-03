@@ -236,6 +236,11 @@ const VodController = {
         throw new ValidationError("Invalid upload temp file path");
       }
 
+      const chunkStat = await fs.lstat(resolvedChunkPath);
+      if (!chunkStat.isFile()) {
+        throw new ValidationError("Invalid upload temp file");
+      }
+
       const chunkData = await fs.readFile(resolvedChunkPath);
       await fs.unlink(resolvedChunkPath); // Clean up the uploaded temp file
 
