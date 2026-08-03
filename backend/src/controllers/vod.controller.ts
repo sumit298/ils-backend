@@ -236,13 +236,21 @@ const VodController = {
         throw new ValidationError("Invalid upload temp file path");
       }
 
-      const chunkStat = await fs.lstat(resolvedChunkPath);
+      const realChunkPath = await fs.realpath(resolvedChunkPath);
+      if (
+        realChunkPath !== RESOLVED_UPLOAD_TMP_ROOT &&
+        !realChunkPath.startsWith(RESOLVED_UPLOAD_TMP_ROOT + path.sep)
+      ) {
+        throw new ValidationError("Invalid upload temp file path");
+      }
+
+      const chunkStat = await fs.lstat(realChunkPath);
       if (!chunkStat.isFile()) {
         throw new ValidationError("Invalid upload temp file");
       }
 
-      const chunkData = await fs.readFile(resolvedChunkPath);
-      await fs.unlink(resolvedChunkPath); // Clean up the uploaded temp file
+      const chunkData = await fs.readFile(realChunkPath);
+      await fs.unlink(realChunkPath); // Clean up the uploaded temp file
 
       if (!chunkBuffers.has(recordingId)) {
         chunkBuffers.set(recordingId, new Map());
