@@ -15,10 +15,14 @@ const StreamsPage = ({ isStreamer = true }) => {
   const params = useParams();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const chunkIndexRef = useRef<number>(0); // Ref to track chunk index for recording
   // Refs so the onended callback always sees the latest values (avoids stale closure)
   const videoProducerRef = useRef<types.Producer | null>(null);
   const audioProducerRef = useRef<types.Producer | null>(null);
-  const screenProducersRef = useRef<{ video: types.Producer | null; audio: types.Producer | null } | null>(null);
+  const screenProducersRef = useRef<{
+    video: types.Producer | null;
+    audio: types.Producer | null;
+  } | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [permissions, setPermissions] = useState({
@@ -50,12 +54,16 @@ const StreamsPage = ({ isStreamer = true }) => {
     video: types.Producer | null;
     audio: types.Producer | null;
   } | null>(null);
-  const [sendTransport, setSendTransport] = useState<types.Transport | null>(null); //store transport for reuse
+  const [sendTransport, setSendTransport] = useState<types.Transport | null>(
+    null,
+  ); //store transport for reuse
   const [isMobile, setIsMobile] = useState(false);
   const [showEndStreamModal, setShowEndStreamModal] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null,
+  );
   const [isRecording, setIsRecording] = useState(false);
   const recordingIdRef = useRef<string | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
@@ -66,7 +74,7 @@ const StreamsPage = ({ isStreamer = true }) => {
   const [selectedDevices, setSelectedDevices] = useState<{
     cameraId: string;
     microphoneId: string;
-  }>({ cameraId: '', microphoneId: '' });
+  }>({ cameraId: "", microphoneId: "" });
   const [streamInfo, setStreamInfo] = useState<{
     title?: string;
     category?: string;
@@ -77,12 +85,13 @@ const StreamsPage = ({ isStreamer = true }) => {
     // Detect mobile device
     const checkMobile = () => {
       const userAgent = navigator.userAgent.toLowerCase();
-      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      const isMobileDevice =
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+          userAgent,
+        );
       setIsMobile(isMobileDevice);
     };
     checkMobile();
-
-
 
     // Fetch stream info
     const fetchStreamInfo = async () => {
@@ -101,22 +110,22 @@ const StreamsPage = ({ isStreamer = true }) => {
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = 'You are currently live. End your stream before leaving.';
+      e.returnValue = "You are currently live. End your stream before leaving.";
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isStreaming]);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("accessToken") || ""
+    const token = sessionStorage.getItem("accessToken") || "";
     const newSocket = io(
       process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001",
       {
         withCredentials: true, // Sends httpOnly cookies automatically
         transports: ["websocket", "polling"],
-        auth: {token}
-      }
+        auth: { token },
+      },
     );
     newSocket.on("connect", () => {
       console.log("Connected to server", newSocket.id);
@@ -208,22 +217,26 @@ const StreamsPage = ({ isStreamer = true }) => {
 
       console.log(
         "Testing connection to:",
-        process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SOCKET_URL
+        process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SOCKET_URL,
       );
 
       const routerCapabilities = (await new Promise((resolve, reject) => {
         const timeout = setTimeout(
           () => reject(new Error("Connection timeout - server not responding")),
-          10000
+          10000,
         );
-        socket?.emit("get-router-capabilities", { roomId: params.id }, (response: any) => {
-          clearTimeout(timeout);
-          if (!response) {
-            reject(new Error("No response from server"));
-          } else {
-            resolve(response);
-          }
-        });
+        socket?.emit(
+          "get-router-capabilities",
+          { roomId: params.id },
+          (response: any) => {
+            clearTimeout(timeout);
+            if (!response) {
+              reject(new Error("No response from server"));
+            } else {
+              resolve(response);
+            }
+          },
+        );
       })) as any;
 
       console.log("Router capabilities received");
@@ -233,15 +246,17 @@ const StreamsPage = ({ isStreamer = true }) => {
       setDevice(newDevice);
       setConnectionStatus("connected");
       setConnectionTested(true);
-      toast.success("Connection test successful! You can now go live.", { position: "bottom-left" });
+      toast.success("Connection test successful! You can now go live.", {
+        position: "bottom-left",
+      });
     } catch (error: any) {
       console.error("MediaSoup initialization failed:", error);
       setConnectionStatus("failed");
       // setConnectionTested(false);
       toast.error(
         error.message ||
-        "Connection test failed. Please check your network and try again.",
-        { position: "bottom-left" }
+          "Connection test failed. Please check your network and try again.",
+        { position: "bottom-left" },
       );
     } finally {
       setIsTestingConnection(false);
@@ -264,11 +279,13 @@ const StreamsPage = ({ isStreamer = true }) => {
 
       // Get available devices
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter(device => device.kind === 'videoinput');
-      const microphones = devices.filter(device => device.kind === 'audioinput');
+      const cameras = devices.filter((device) => device.kind === "videoinput");
+      const microphones = devices.filter(
+        (device) => device.kind === "audioinput",
+      );
 
-      console.log('Available cameras:', cameras);
-      console.log('Available microphones:', microphones);
+      console.log("Available cameras:", cameras);
+      console.log("Available microphones:", microphones);
 
       setAvailableDevices({ cameras, microphones });
 
@@ -276,8 +293,10 @@ const StreamsPage = ({ isStreamer = true }) => {
       const videoTrack = mediaStream.getVideoTracks()[0];
       const audioTrack = mediaStream.getAudioTracks()[0];
       setSelectedDevices({
-        cameraId: videoTrack.getSettings().deviceId || cameras[0]?.deviceId || '',
-        microphoneId: audioTrack.getSettings().deviceId || microphones[0]?.deviceId || '',
+        cameraId:
+          videoTrack.getSettings().deviceId || cameras[0]?.deviceId || "",
+        microphoneId:
+          audioTrack.getSettings().deviceId || microphones[0]?.deviceId || "",
       });
     } catch (error) {
       console.error("Permission denied:", error);
@@ -303,10 +322,15 @@ const StreamsPage = ({ isStreamer = true }) => {
       }
 
       // Stop old tracks
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
 
       setStream(newStream);
-      setSelectedDevices(prev => ({ ...prev, cameraId: deviceId }));
+      setSelectedDevices((prev) => ({ ...prev, cameraId: deviceId }));
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (videoProducerRef.current && newVideoTrack) {
+        await videoProducerRef.current.replaceTrack({ track: newVideoTrack });
+      }
 
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
@@ -342,11 +366,14 @@ const StreamsPage = ({ isStreamer = true }) => {
       }
 
       // Stop old tracks
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
 
       setStream(newStream);
-      setSelectedDevices(prev => ({ ...prev, microphoneId: deviceId }));
+      setSelectedDevices((prev) => ({ ...prev, microphoneId: deviceId }));
 
+      if (audioProducerRef.current && newAudioTrack) {
+        await audioProducerRef.current.replaceTrack({ track: newAudioTrack });
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
@@ -360,12 +387,16 @@ const StreamsPage = ({ isStreamer = true }) => {
     if (isStarting) return;
 
     if (!stream || !device || !socket) {
-      toast.error("Please enable camera and test connection first", { position: "bottom-left" });
+      toast.error("Please enable camera and test connection first", {
+        position: "bottom-left",
+      });
       return;
     }
 
     if (!connectionTested || connectionStatus !== "connected") {
-      toast.error("Please test connection before going live", { position: "bottom-left" });
+      toast.error("Please test connection before going live", {
+        position: "bottom-left",
+      });
       return;
     }
 
@@ -375,7 +406,7 @@ const StreamsPage = ({ isStreamer = true }) => {
       const transportInfo = (await new Promise((resolve, reject) => {
         const timeout = setTimeout(
           () => reject(new Error("Transport creation timeout")),
-          10000
+          10000,
         );
         socket.emit(
           "create-transport",
@@ -383,7 +414,7 @@ const StreamsPage = ({ isStreamer = true }) => {
           (response: any) => {
             clearTimeout(timeout);
             resolve(response);
-          }
+          },
         );
       })) as any;
 
@@ -408,7 +439,7 @@ const StreamsPage = ({ isStreamer = true }) => {
             await new Promise((resolve, reject) => {
               const timeout = setTimeout(
                 () => reject(new Error("Connect transport timeout")),
-                10000
+                10000,
               );
               socket.emit(
                 "connect-transport",
@@ -422,14 +453,14 @@ const StreamsPage = ({ isStreamer = true }) => {
                   if (response?.error) {
                     console.error(
                       "❌ Transport connect error:",
-                      response.error
+                      response.error,
                     );
                     reject(new Error(response.error));
                   } else {
                     console.log("✅ Transport connected successfully");
                     resolve(response);
                   }
-                }
+                },
               );
             });
 
@@ -438,33 +469,41 @@ const StreamsPage = ({ isStreamer = true }) => {
             console.error("❌ Connect transport exception:", error);
             errback(error);
           }
-        }
+        },
       );
 
-      sendTransport.on("produce", async ({ kind, rtpParameters, appData }, callback) => {
-        console.log("Producing...", { kind, rtpParameters, isScreenShare: appData?.isScreenShare });
-
-        socket.emit(
-          "produce",
-          {
-            transportId: sendTransport.id,
+      sendTransport.on(
+        "produce",
+        async ({ kind, rtpParameters, appData }, callback, errback) => {
+          console.log("Producing...", {
             kind,
             rtpParameters,
-            roomId: params.id,
-            isScreenShare: appData?.isScreenShare || false,
-          },
-          (response: any) => {
-            console.log("Produce response:", response);
+            isScreenShare: appData?.isScreenShare,
+          });
 
-            if (response.error) {
-              console.error("Produce error:", response.error);
-              return; // Don't call callback on error
-            }
+          socket.emit(
+            "produce",
+            {
+              transportId: sendTransport.id,
+              kind,
+              rtpParameters,
+              roomId: params.id,
+              isScreenShare: appData?.isScreenShare || false,
+            },
+            (response: any) => {
+              console.log("Produce response:", response);
 
-            callback({ id: response.producerId });
-          }
-        );
-      });
+              if (response.error) {
+                console.error("Produce error:", response.error);
+                errback(new Error(response.error));
+                return; // Don't call callback on error
+              }
+
+              callback({ id: response.producerId });
+            },
+          );
+        },
+      );
 
       sendTransport.on("connectionstatechange", (state) => {
         console.log("🔗 Transport connection state:", state);
@@ -512,8 +551,25 @@ const StreamsPage = ({ isStreamer = true }) => {
     setIsStopping(true);
 
     try {
-      if (mediaRecorder && isRecording) {
+      if (mediaRecorder && isRecording && recordingIdRef.current) {
+        const id = recordingIdRef.current;
+        const startTime = recordingStartTimeRef.current;
+        mediaRecorder.onstop = async () => {
+          const durationMs = startTime ? Date.now() - startTime : 0;
+          try {
+            await api.post("/api/vods/recording-end", {
+              streamId: params.id,
+              recordingId: id,
+              durationMs,
+            });
+            console.log("Recording ended successfully");
+          } catch (err) {
+            console.error("Failed to end recording:", err);
+          }
+        };
         mediaRecorder.stop();
+        recordingIdRef.current = null;
+        recordingStartTimeRef.current = null;
         setIsRecording(false);
       }
 
@@ -524,7 +580,7 @@ const StreamsPage = ({ isStreamer = true }) => {
       }
 
       if (isScreenSharing) {
-        stopScreenShare()
+        stopScreenShare();
       }
 
       const { data } = await api.post(`/api/streams/${params.id}/end`);
@@ -541,16 +597,18 @@ const StreamsPage = ({ isStreamer = true }) => {
         setDuration(finalDurationSeconds);
         toast.success(
           `Stream ended. Duration: ${formatDuration(finalDurationSeconds)}`,
-          { position: "bottom-left" }
+          { position: "bottom-left" },
         );
       } else {
         // Fallback: use current duration state
-        toast.success(`Stream ended. Duration: ${formatDuration(duration)}`, { position: "bottom-left" });
+        toast.success(`Stream ended. Duration: ${formatDuration(duration)}`, {
+          position: "bottom-left",
+        });
       }
 
       // Redirect to dashboard after stream ends
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = "/dashboard";
       }, 2000);
     } catch (error) {
       console.error("Failed to stop stream:", error);
@@ -561,38 +619,64 @@ const StreamsPage = ({ isStreamer = true }) => {
   };
 
   const toggleRecording = async () => {
-    if (isRecording) {
-      if (mediaRecorder) {
-        mediaRecorder.stop();
-        setMediaRecorder(null);
-      }
-      if (recordingIdRef.current) {
-        const durationMs = recordingStartTimeRef.current
-          ? Date.now() - recordingStartTimeRef.current
-          : 0;
+    if (mediaRecorder && recordingIdRef.current) {
+      const id = recordingIdRef.current;
+      const startTime = recordingStartTimeRef.current;
+      mediaRecorder.onstop = async () => {
+        const durationMs = startTime ? Date.now() - startTime : 0;
         try {
-          await api.post('/api/vods/recording-end', {
+          await api.post("/api/vods/recording-end", {
             streamId: params.id,
-            recordingId: recordingIdRef.current,
-            durationMs
+            recordingId: id,
+            durationMs,
           });
+          console.log("Recording ended successfully");
         } catch (err) {
-          console.error('recording-end failed:', err);
+          console.error("Failed to end recording:", err);
         }
-        recordingIdRef.current = null;
-        recordingStartTimeRef.current = null;
-      }
-      setIsRecording(false);
+      };
+      mediaRecorder.stop();
+      setMediaRecorder(null);
+      recordingIdRef.current = null;
+      recordingStartTimeRef.current = null;
       toast.success("Recording stopped", { position: "bottom-left" });
-    } else {
-      startRecording();
-      toast.success("Recording started", { position: "bottom-left" });
     }
+    setIsRecording(false);
   };
+
+  const makeChunkHandler =
+    (recordingIdSource: () => string | null) => async (e: BlobEvent) => {
+      if (e.data.size === 0) return;
+      const index = chunkIndexRef.current++;
+      const blob = e.data;
+
+      const tryUpload = async (attempts = 0): Promise<void> => {
+        const formData = new FormData();
+        formData.append("chunk", blob);
+        formData.append("streamId", params.id as string);
+        formData.append("recordingId", recordingIdSource() as string);
+        formData.append("chunkIndex", index.toString());
+        try {
+          await api.post("/api/vods/upload-chunk", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } catch (error) {
+          if (attempts < 3) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000 * (attempts + 1)),
+            ); // Exponential backoff
+            return tryUpload(attempts + 1);
+          }
+          console.error("Upload chunk failed:", error);
+        }
+      };
+      tryUpload();
+    };
 
   const startRecording = () => {
     // Use screen stream if screen sharing is active, otherwise use camera stream
-    const recordStream = isScreenSharing && screenStream ? screenStream : stream;
+    const recordStream =
+      isScreenSharing && screenStream ? screenStream : stream;
     if (!recordStream) return;
 
     const recordingId = `${params.id}-${Date.now()}`;
@@ -600,21 +684,17 @@ const StreamsPage = ({ isStreamer = true }) => {
     recordingStartTimeRef.current = Date.now();
 
     const recorderOptions = getRecorderOptions();
-    console.log('🎥 Recording with:', recorderOptions.mimeType, 'id:', recordingId);
+    console.log(
+      "🎥 Recording with:",
+      recorderOptions.mimeType,
+      "id:",
+      recordingId,
+    );
 
     const recorder = new MediaRecorder(recordStream, recorderOptions);
-    recorder.ondataavailable = async (e) => {
-      if (e.data.size > 0) {
-        const formData = new FormData();
-        formData.append('chunk', e.data);
-        formData.append('streamId', params.id as string);
-        formData.append('recordingId', recordingIdRef.current as string);
-
-        api.post('/api/vods/upload-chunk', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        }).catch(err => console.error('Upload chunk failed:', err));
-      }
-    };
+    chunkIndexRef.current = 0; // Reset chunk index for new recording
+    recorder.ondataavailable = makeChunkHandler(() => recordingIdRef.current);
+    recorder.onerror = () => toast.error("Recording error, please restart recording", { position: "bottom-left" });
 
     recorder.start(RECORDING_CONFIG.chunks.intervalMs);
     setMediaRecorder(recorder);
@@ -645,11 +725,15 @@ const StreamsPage = ({ isStreamer = true }) => {
           const durationMs = recordingStartTimeRef.current
             ? Date.now() - recordingStartTimeRef.current
             : 0;
-          api.post('/api/vods/recording-end', {
-            streamId: params.id,
-            recordingId: recordingIdRef.current,
-            durationMs
-          }).catch(err => console.error('recording-end (camera→screen) failed:', err));
+          api
+            .post("/api/vods/recording-end", {
+              streamId: params.id,
+              recordingId: recordingIdRef.current,
+              durationMs,
+            })
+            .catch((err) =>
+              console.error("recording-end (camera→screen) failed:", err),
+            );
         }
 
         const screenRecordingId = `${params.id}-${Date.now()}`;
@@ -657,21 +741,23 @@ const StreamsPage = ({ isStreamer = true }) => {
         recordingStartTimeRef.current = Date.now();
 
         const recorderOptions = getRecorderOptions();
-        console.log('🎥 Screen recording with:', recorderOptions.mimeType, 'id:', screenRecordingId);
+        console.log(
+          "🎥 Screen recording with:",
+          recorderOptions.mimeType,
+          "id:",
+          screenRecordingId,
+        );
 
-        const screenRecorder = new MediaRecorder(screenMediaStream, recorderOptions);
-        screenRecorder.ondataavailable = async (e) => {
-          if (e.data.size > 0) {
-            const formData = new FormData();
-            formData.append('chunk', e.data);
-            formData.append('streamId', params.id as string);
-            formData.append('recordingId', recordingIdRef.current as string);
+        const screenRecorder = new MediaRecorder(
+          screenMediaStream,
+          recorderOptions,
+        );
 
-            api.post('/api/vods/upload-chunk', formData, {
-              headers: { 'Content-Type': 'multipart/form-data' }
-            }).catch(err => console.error('Upload chunk failed:', err));
-          }
-        };
+        chunkIndexRef.current = 0; // Reset chunk index for new recording
+        screenRecorder.ondataavailable = makeChunkHandler(
+          () => recordingIdRef.current,
+        );
+        screenRecorder.onerror = () => toast.error("Recording error, please restart recording", { position: "bottom-left" });
         screenRecorder.start(RECORDING_CONFIG.chunks.intervalMs);
         setMediaRecorder(screenRecorder);
       }
@@ -694,25 +780,34 @@ const StreamsPage = ({ isStreamer = true }) => {
         });
         console.log("Screen audio producer created:", screenAudioProducer.id);
       }
-      const producers = { video: screenVideoProducer, audio: screenAudioProducer };
+      const producers = {
+        video: screenVideoProducer,
+        audio: screenAudioProducer,
+      };
       setScreenProducers(producers);
       screenProducersRef.current = producers;
       setIsScreenSharing(true);
 
       screenVideoTrack.onended = () => {
-        console.log('Screen share track ended (browser stop button)');
+        console.log("Screen share track ended (browser stop button)");
         // Use refs to avoid stale closure — state values may be null here
         const prods = screenProducersRef.current;
         const scStream = screenStreamRef.current;
         if (prods?.video) {
-          socket?.emit("close-producer", { roomId: params.id, producerId: prods.video.id });
+          socket?.emit("close-producer", {
+            roomId: params.id,
+            producerId: prods.video.id,
+          });
           prods.video.close();
         }
         if (prods?.audio) {
-          socket?.emit("close-producer", { roomId: params.id, producerId: prods.audio.id });
+          socket?.emit("close-producer", {
+            roomId: params.id,
+            producerId: prods.audio.id,
+          });
           prods.audio.close();
         }
-        scStream?.getTracks().forEach(t => t.stop());
+        scStream?.getTracks().forEach((t) => t.stop());
         screenProducersRef.current = null;
         screenStreamRef.current = null;
         setScreenProducers(null);
@@ -724,12 +819,18 @@ const StreamsPage = ({ isStreamer = true }) => {
     } catch (error: any) {
       console.log("Screen share cancelled or failed:", error.name);
       if (error.name === "NotAllowedError") {
-        toast.error("Screen sharing permission denied", { position: "bottom-left" });
+        toast.error("Screen sharing permission denied", {
+          position: "bottom-left",
+        });
       } else if (error.name === "NotFoundError") {
-        toast.error("No screen available to share", { position: "bottom-left" });
+        toast.error("No screen available to share", {
+          position: "bottom-left",
+        });
       } else if (error.name !== "AbortError") {
         // AbortError means user cancelled, don't show error for that
-        toast.error("Failed to start screen sharing", { position: "bottom-left" });
+        toast.error("Failed to start screen sharing", {
+          position: "bottom-left",
+        });
       }
     }
   };
@@ -737,11 +838,17 @@ const StreamsPage = ({ isStreamer = true }) => {
   const stopScreenShare = () => {
     if (screenProducers) {
       if (screenProducers.video) {
-        socket?.emit("close-producer", { roomId: params.id, producerId: screenProducers.video.id });
+        socket?.emit("close-producer", {
+          roomId: params.id,
+          producerId: screenProducers.video.id,
+        });
         screenProducers.video.close();
       }
       if (screenProducers.audio) {
-        socket?.emit("close-producer", { roomId: params.id, producerId: screenProducers.audio.id });
+        socket?.emit("close-producer", {
+          roomId: params.id,
+          producerId: screenProducers.audio.id,
+        });
         screenProducers.audio.close();
       }
       setScreenProducers(null);
@@ -757,21 +864,19 @@ const StreamsPage = ({ isStreamer = true }) => {
     // Switch recording back to camera only if recording is active
     if (isRecording && mediaRecorder && stream) {
       mediaRecorder.stop();
+
+      const cameraRecordingId = `${params.id}-${Date.now()}`;
+      recordingIdRef.current = cameraRecordingId;
+      recordingStartTimeRef.current = Date.now();
+
       const recorderOptions = getRecorderOptions();
-      console.log('🎥 Camera recording with:', recorderOptions.mimeType);
 
       const cameraRecorder = new MediaRecorder(stream, recorderOptions);
-      cameraRecorder.ondataavailable = async (e) => {
-        if (e.data.size > 0) {
-          const formData = new FormData();
-          formData.append('chunk', e.data);
-          formData.append('streamId', params.id as string);
-
-          api.post('/api/vods/upload-chunk', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          }).catch(err => console.error('Upload chunk failed:', err));
-        }
-      };
+      chunkIndexRef.current = 0; // Reset chunk index for new recording
+      cameraRecorder.ondataavailable = makeChunkHandler(
+        () => recordingIdRef.current,
+      );
+      cameraRecorder.onerror = () => toast.error("Recording error, Please restart recording", { position: "bottom-left" });
       cameraRecorder.start(RECORDING_CONFIG.chunks.intervalMs);
       setMediaRecorder(cameraRecorder);
     }
@@ -781,15 +886,22 @@ const StreamsPage = ({ isStreamer = true }) => {
   };
 
   useEffect(() => {
-    if (permissions.camera && socket && !connectionTested) {
+    if (
+      permissions.camera &&
+      socket &&
+      !connectionTested &&
+      connectionStatus === "connected"
+    ) {
       initializeMediaSoup();
     }
-  }, [permissions.camera, socket]);
+  }, [permissions.camera, socket, connectionStatus]);
 
   const copyStreamLink = () => {
     const link = `${window.location.origin}/watch/${params.id}`;
     navigator.clipboard.writeText(link);
-    toast.success("Stream link copied to clipboard", { position: "bottom-left" });
+    toast.success("Stream link copied to clipboard", {
+      position: "bottom-left",
+    });
   };
 
   return (
@@ -799,17 +911,38 @@ const StreamsPage = ({ isStreamer = true }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-2xl p-8 max-w-sm w-full text-center border border-border shadow-card">
             <div className="w-14 h-14 bg-accent-red/15 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-accent-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="w-7 h-7 text-accent-red"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
-            <h2 className="text-xl font-bold mb-1 text-text-primary">End Stream?</h2>
-            <p className="text-text-tertiary text-sm mb-6">This action cannot be undone.</p>
+            <h2 className="text-xl font-bold mb-1 text-text-primary">
+              End Stream?
+            </h2>
+            <p className="text-text-tertiary text-sm mb-6">
+              This action cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowEndStreamModal(false)} className="flex-1 bg-surface border border-border hover:bg-elevated hover:border-border-hover text-text-primary px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+              <button
+                onClick={() => setShowEndStreamModal(false)}
+                className="flex-1 bg-surface border border-border hover:bg-elevated hover:border-border-hover text-text-primary px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+              >
                 Cancel
               </button>
-              <button onClick={stopStream} disabled={isStopping} className="flex-1 btn-danger px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
+              <button
+                onClick={stopStream}
+                disabled={isStopping}
+                className="flex-1 btn-danger px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+              >
                 {isStopping ? "Ending..." : "End Stream"}
               </button>
             </div>
@@ -818,20 +951,46 @@ const StreamsPage = ({ isStreamer = true }) => {
       )}
 
       {/* Mobile Chat Drawer */}
-      <div className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${showMobileChat ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileChat(false)} />
-        <div className={`absolute top-0 right-0 h-full w-80 bg-surface shadow-card transition-transform duration-300 flex flex-col border-l border-border ${showMobileChat ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div
+        className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${showMobileChat ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+      >
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowMobileChat(false)}
+        />
+        <div
+          className={`absolute top-0 right-0 h-full w-80 bg-surface shadow-card transition-transform duration-300 flex flex-col border-l border-border ${showMobileChat ? "translate-x-0" : "translate-x-full"}`}
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-semibold text-text-primary">Live Chat</span>
-            <button onClick={() => setShowMobileChat(false)} className="text-text-tertiary hover:text-text-primary transition p-1">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <span className="text-sm font-semibold text-text-primary">
+              Live Chat
+            </span>
+            <button
+              onClick={() => setShowMobileChat(false)}
+              className="text-text-tertiary hover:text-text-primary transition p-1"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            <ChatPanel socket={socket} streamId={params.id as string} username={user?.username || "Streamer"} isStreamer={true} /
-            >
+            <ChatPanel
+              socket={socket}
+              streamId={params.id as string}
+              username={user?.username || "Streamer"}
+              isStreamer={true}
+            />
           </div>
         </div>
       </div>
@@ -840,9 +999,22 @@ const StreamsPage = ({ isStreamer = true }) => {
       <div className="shrink-0 bg-surface/80 backdrop-blur-sm border-b border-border z-10">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href="/dashboard" className="flex items-center gap-1.5 text-text-tertiary hover:text-text-primary transition text-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <a
+              href="/dashboard"
+              className="flex items-center gap-1.5 text-text-tertiary hover:text-text-primary transition text-sm"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
               <span className="hidden sm:inline">Dashboard</span>
             </a>
@@ -853,14 +1025,28 @@ const StreamsPage = ({ isStreamer = true }) => {
           </div>
           <div className="flex items-center gap-2">
             {isStreaming && (
-              <ViewerStats viewerCount={viewerCount} duration={formatDuration(duration)} isLive={isStreaming} />
+              <ViewerStats
+                viewerCount={viewerCount}
+                duration={formatDuration(duration)}
+                isLive={isStreaming}
+              />
             )}
             <button
               onClick={() => setShowMobileChat(true)}
               className="lg:hidden flex items-center gap-1.5 bg-surface hover:bg-elevated text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-lg text-xs font-medium transition border border-border"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
               Chat
             </button>
@@ -870,23 +1056,38 @@ const StreamsPage = ({ isStreamer = true }) => {
 
       {/* Main Content — OBS style: video+controls left, chat right */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-
         {/* Left — Video + Controls */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
           {/* Video — fills all remaining height */}
           <div className="flex-1 relative bg-black min-h-0">
-            <video ref={videoRef} autoPlay muted className="w-full h-full object-cover flip" />
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              className="w-full h-full object-cover flip"
+            />
 
             {/* No camera placeholder */}
             {!permissions.camera && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-elevated">
                 <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center border border-border">
-                  <svg className="w-8 h-8 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg
+                    className="w-8 h-8 text-text-muted"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
-                <p className="text-text-muted text-sm">Camera preview will appear here</p>
+                <p className="text-text-muted text-sm">
+                  Camera preview will appear here
+                </p>
               </div>
             )}
 
@@ -911,17 +1112,36 @@ const StreamsPage = ({ isStreamer = true }) => {
             {/* Connection status badge (pre-live) */}
             {!isStreaming && permissions.camera && (
               <div className="absolute top-3 right-3">
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${connectionStatus === "connected" ? "bg-primary/20 text-primary border border-primary/30"
-                    : connectionStatus === "connecting" || isTestingConnection ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                      : connectionStatus === "failed" ? "bg-accent-red/20 text-accent-red border border-accent-red/30"
-                        : "bg-black/50 text-text-muted border border-border"
-                  }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${connectionStatus === "connected" ? "bg-primary"
-                      : connectionStatus === "connecting" || isTestingConnection ? "bg-yellow-400 animate-pulse"
-                        : connectionStatus === "failed" ? "bg-accent-red"
-                          : "bg-text-muted"
-                    }`} />
-                  {isTestingConnection ? "Testing..." : connectionStatus === "connected" ? "Ready" : connectionStatus === "failed" ? "Failed" : "Disconnected"}
+                <div
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
+                    connectionStatus === "connected"
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : connectionStatus === "connecting" || isTestingConnection
+                        ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                        : connectionStatus === "failed"
+                          ? "bg-accent-red/20 text-accent-red border border-accent-red/30"
+                          : "bg-black/50 text-text-muted border border-border"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      connectionStatus === "connected"
+                        ? "bg-primary"
+                        : connectionStatus === "connecting" ||
+                            isTestingConnection
+                          ? "bg-yellow-400 animate-pulse"
+                          : connectionStatus === "failed"
+                            ? "bg-accent-red"
+                            : "bg-text-muted"
+                    }`}
+                  />
+                  {isTestingConnection
+                    ? "Testing..."
+                    : connectionStatus === "connected"
+                      ? "Ready"
+                      : connectionStatus === "failed"
+                        ? "Failed"
+                        : "Disconnected"}
                 </div>
               </div>
             )}
@@ -933,22 +1153,41 @@ const StreamsPage = ({ isStreamer = true }) => {
               /* Step 1: Enable camera */
               <div className="px-4 py-3 flex items-center gap-4">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 border border-primary/20">
-                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg
+                    className="w-4 h-4 text-primary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-text-primary font-medium text-sm">Camera & Microphone required</p>
-                  <p className="text-text-muted text-xs">Grant access to preview your stream</p>
+                  <p className="text-text-primary font-medium text-sm">
+                    Camera & Microphone required
+                  </p>
+                  <p className="text-text-muted text-xs">
+                    Grant access to preview your stream
+                  </p>
                 </div>
-                <button onClick={requestPermissions} className="shrink-0 btn-primary px-5 py-2 rounded-lg text-sm font-semibold">
+                <button
+                  onClick={requestPermissions}
+                  className="shrink-0 btn-primary px-5 py-2 rounded-lg text-sm font-semibold"
+                >
                   Enable
                 </button>
               </div>
             ) : !isStreaming ? (
               /* Step 2: Device selection + go live */
               <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-widest shrink-0">Devices</span>
+                <span className="text-xs font-semibold text-text-muted uppercase tracking-widest shrink-0">
+                  Devices
+                </span>
                 {availableDevices.cameras.length > 0 && (
                   <select
                     value={selectedDevices.cameraId}
@@ -956,7 +1195,9 @@ const StreamsPage = ({ isStreamer = true }) => {
                     className="flex-1 min-w-32 bg-elevated text-text-primary text-xs px-3 py-2 rounded-lg border border-border focus:outline-none focus:border-primary transition-colors"
                   >
                     {availableDevices.cameras.map((d) => (
-                      <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId.slice(0, 6)}`}</option>
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Camera ${d.deviceId.slice(0, 6)}`}
+                      </option>
                     ))}
                   </select>
                 )}
@@ -967,20 +1208,28 @@ const StreamsPage = ({ isStreamer = true }) => {
                     className="flex-1 min-w-32 bg-elevated text-text-primary text-xs px-3 py-2 rounded-lg border border-border focus:outline-none focus:border-primary transition-colors"
                   >
                     {availableDevices.microphones.map((d) => (
-                      <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0, 6)}`}</option>
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Mic ${d.deviceId.slice(0, 6)}`}
+                      </option>
                     ))}
                   </select>
                 )}
                 <div className="ml-auto flex items-center gap-3 shrink-0">
                   {connectionTested && connectionStatus === "connected" && (
-                    <span className="text-xs text-primary hidden sm:inline">Ready to go live</span>
+                    <span className="text-xs text-primary hidden sm:inline">
+                      Ready to go live
+                    </span>
                   )}
                   {connectionStatus === "failed" && (
-                    <span className="text-xs text-accent-red hidden sm:inline">Connection failed</span>
+                    <span className="text-xs text-accent-red hidden sm:inline">
+                      Connection failed
+                    </span>
                   )}
                   <button
                     onClick={startStream}
-                    disabled={!connectionTested || connectionStatus !== "connected"}
+                    disabled={
+                      !connectionTested || connectionStatus !== "connected"
+                    }
                     className="btn-primary disabled:opacity-50 disabled:bg-surface disabled:text-text-muted px-5 py-2 rounded-lg text-sm font-bold disabled:cursor-not-allowed"
                   >
                     {isStarting ? "Starting..." : "Go Live"}
@@ -997,7 +1246,13 @@ const StreamsPage = ({ isStreamer = true }) => {
                 isRecording={isRecording}
                 onToggleMute={toggleMute}
                 onToggleCamera={toggleCamera}
-                onToggleScreenShare={isMobile ? undefined : (isScreenSharing ? stopScreenShare : startScreenShare)}
+                onToggleScreenShare={
+                  isMobile
+                    ? undefined
+                    : isScreenSharing
+                      ? stopScreenShare
+                      : startScreenShare
+                }
                 onToggleRecording={toggleRecording}
                 onEndStream={() => setShowEndStreamModal(true)}
                 showScreenShare={!isMobile}
@@ -1010,22 +1265,42 @@ const StreamsPage = ({ isStreamer = true }) => {
         <div className="hidden lg:flex w-72 xl:w-80 shrink-0 flex-col border-l border-border overflow-hidden bg-surface">
           {/* Chat fills all space */}
           <div className="flex-1 overflow-hidden">
-            <ChatPanel socket={socket} streamId={params.id as string} username={user?.username || "Streamer"} isStreamer={true} />
+            <ChatPanel
+              socket={socket}
+              streamId={params.id as string}
+              username={user?.username || "Streamer"}
+              isStreamer={true}
+            />
           </div>
 
           {/* Connection panel — only shown pre-live */}
           {!isStreaming && (
             <div className="shrink-0 border-t border-border p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-widest">Connection</span>
+                <span className="text-xs font-semibold text-text-muted uppercase tracking-widest">
+                  Connection
+                </span>
                 <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-primary"
-                      : connectionStatus === "connecting" || isTestingConnection ? "bg-yellow-500 animate-pulse"
-                        : connectionStatus === "failed" ? "bg-accent-red"
-                          : "bg-text-muted"
-                    }`} />
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      connectionStatus === "connected"
+                        ? "bg-primary"
+                        : connectionStatus === "connecting" ||
+                            isTestingConnection
+                          ? "bg-yellow-500 animate-pulse"
+                          : connectionStatus === "failed"
+                            ? "bg-accent-red"
+                            : "bg-text-muted"
+                    }`}
+                  />
                   <span className="text-xs text-text-tertiary">
-                    {isTestingConnection ? "Testing..." : connectionStatus === "connected" ? "Connected" : connectionStatus === "failed" ? "Failed" : "Disconnected"}
+                    {isTestingConnection
+                      ? "Testing..."
+                      : connectionStatus === "connected"
+                        ? "Connected"
+                        : connectionStatus === "failed"
+                          ? "Failed"
+                          : "Disconnected"}
                   </span>
                 </div>
               </div>
@@ -1039,15 +1314,17 @@ const StreamsPage = ({ isStreamer = true }) => {
                   Ready to go live!
                 </p>
               )}
-              {permissions.camera && !connectionTested && connectionStatus !== "connecting" && (
-                <button
-                  onClick={initializeMediaSoup}
-                  disabled={isTestingConnection}
-                  className="w-full bg-surface border border-border hover:bg-elevated hover:border-border-hover disabled:opacity-50 text-text-primary px-3 py-2 rounded-lg text-xs font-medium transition"
-                >
-                  {isTestingConnection ? "Testing..." : "Test Connection"}
-                </button>
-              )}
+              {permissions.camera &&
+                !connectionTested &&
+                connectionStatus !== "connecting" && (
+                  <button
+                    onClick={initializeMediaSoup}
+                    disabled={isTestingConnection}
+                    className="w-full bg-surface border border-border hover:bg-elevated hover:border-border-hover disabled:opacity-50 text-text-primary px-3 py-2 rounded-lg text-xs font-medium transition"
+                  >
+                    {isTestingConnection ? "Testing..." : "Test Connection"}
+                  </button>
+                )}
             </div>
           )}
         </div>

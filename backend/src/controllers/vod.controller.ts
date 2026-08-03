@@ -41,6 +41,7 @@ interface PopulatedVod {
 interface UploadChunkBody {
   streamId: string;
   recordingId: string;
+  chunkIndex?: string;
 }
 
 interface RecordingEndBody {
@@ -56,6 +57,9 @@ interface VodRequest extends Request {
 const generateAvatarUrl = (username: string): string => {
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(username)}`;
 };
+
+const chunkBuffers = new Map<string, Map<number, Buffer>>(); // Map<recordingId, Map<chunkIndex, Buffer>>
+const nextChunkIndex = new Map<string, number>(); // Map<recordingId, nextChunkIndex>
 
 const VodController = {
   getVods: async (req: Request, res: Response): Promise<void> => {
@@ -217,8 +221,29 @@ const VodController = {
         throw new ValidationError("Invalid recording path");
       }
 
-      await fs.appendFile(filePath, await fs.readFile(chunk.path));
-      await fs.unlink(chunk.path);
+      const chunkIndex = parseInt(req.body.chunkIndex ?? '0', 10);
+      if (Number.isNaN(chunkIndex) || chunkIndex < 0) {
+        throw new ValidationError("Invalid chunk index");
+      }
+      const chunkData = await fs.readFile(chunk.path);
+      await fs.unlink(chunk.path); // Clean up the uploaded temp file
+
+      if (!chunkBuffers.has(recordingId)) {
+        chunkBuffers.set(recordingId, new Map());
+        nextChunkIndex.set(recordingId, 0);
+      }
+
+      chunkBuffers.get(recordingId)!.set(chunkIndex, chunkData);
+      let next = nextChunkIndex.get(recordingId)!;
+      const buffer = chunkBuffers.get(recordingId)!;
+
+      while(buffer.has(next)) {
+        await fs.appendFile(filePath, buffer.get(next)!);
+        buffer.delete(next);
+        next++;
+      }
+
+      nextChunkIndex.set(recordingId, next);
 
       Logger.info(`Chunk uploaded for recording: ${recordingId}`);
 
@@ -290,6 +315,8 @@ const VodController = {
       await fs.writeFile(filePath, fixedBuffer);
 
       finalizedRecordings.add(recordingId);
+      chunkBuffers.delete(recordingId);
+      nextChunkIndex.delete(recordingId);
 
       Logger.info(`Recording finalized: ${recordingId}`);
 
