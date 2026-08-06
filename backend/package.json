@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.989.0",
+    "@aws-sdk/lib-storage": "^3.1101.0",
     "@aws-sdk/s3-request-presigner": "^3.989.0",
     "@google-cloud/text-to-speech": "^6.4.1",
     "@google/genai": "^2.10.0",

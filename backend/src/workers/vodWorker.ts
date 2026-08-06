@@ -28,38 +28,74 @@ class VODWorker {
   async start(): Promise<void> {
     try {
       await mongoose.connect(
-        process.env.DATABASE_URL || "mongodb://localhost:27018/streamhub"
+        process.env.DATABASE_URL || "mongodb://localhost:27018/streamhub",
       );
       logger.info("VOD Worker: Database connected");
 
       this.r2Service = new R2Service(logger);
 
       this.connection = await amqp.connect(
-        process.env.RABBITMQ_URL || "amqp://localhost:5672"
+        process.env.RABBITMQ_URL || "amqp://localhost:5672",
       );
 
       this.channel = await this.connection.createChannel();
       this.channel.prefetch(1);
 
+      await this.channel.assertExchange("vod.dlx", "direct", {
+        durable: true,
+      });
+
+      await this.channel.assertQueue("vod.conversion.dlq", {
+        durable: true,
+      });
+
+      await this.channel.bindQueue(
+        "vod.conversion.dlq",
+        "vod.dlx",
+        "vod.conversion",
+      );
+
       await this.channel.assertQueue("vod.conversion", {
         durable: true,
-        maxLength: 100,
+        maxLength: 1000,
+        arguments: {
+          "x-dead-letter-exchange": "vod.dlx",
+          "x-dead-letter-routing-key": "vod.conversion",
+        },
       });
 
       logger.info("VOD Worker: Started, waiting for jobs...");
 
-      this.channel.consume("vod.conversion", async (msg: ConsumeMessage | null) => {
-        if (!msg) return;
+      this.channel.consume(
+        "vod.conversion",
+        async (msg: ConsumeMessage | null) => {
+          if (!msg) return;
 
-        try {
-          const data: VODJobData = JSON.parse(msg.content.toString());
-          await this.processVOD(data);
-          this.channel?.ack(msg);
-        } catch (error) {
-          logger.error("VOD processing failed", error);
-          this.channel?.nack(msg, false, false);
-        }
-      });
+          try {
+            const data: VODJobData & { attempts?: number } = JSON.parse(
+              msg.content.toString(),
+            );
+            data.attempts = (data.attempts || 0) + 1;
+            await this.processVOD(data);
+            this.channel?.ack(msg);
+          } catch (error) {
+            logger.error("VOD processing failed", error);
+            const data = JSON.parse(msg.content.toString());
+            const attempts = (data.attempts ?? 0) + 1;
+            if (attempts < 3) {
+              const retryMsg = Buffer.from(
+                JSON.stringify({ ...data, attempts }),
+              );
+              this.channel?.nack(msg, false, false);
+              this.channel?.sendToQueue("vod.conversion", retryMsg, {
+                persistent: true,
+              });
+            } else {
+              this.channel?.nack(msg, false, false); 
+            }
+          }
+        },
+      );
     } catch (error) {
       logger.error("VOD Worker: Startup failed", error);
       process.exit(1);
@@ -69,7 +105,7 @@ class VODWorker {
   async processVOD(data: VODJobData): Promise<void> {
     const { streamId, webmPath, userId } = data;
     const recordingsDir = "/tmp/recordings";
-    const mp4Path = path.join(recordingsDir, `${streamId}.mp4`);
+    const mp4Path = path.join(recordingsDir, `${streamId}-${Date.now()}.mp4`);
 
     logger.info(`Processing VOD: ${streamId}`);
 
@@ -87,11 +123,18 @@ class VODWorker {
       await new Promise<void>((resolve, reject) => {
         const ffmpeg = spawn("ffmpeg", [
           "-y",
-          "-fflags", "+genpts",
-          "-i", webmPath,
-          "-c:v", "libx264",
-          "-c:a", "aac",
-          "-movflags", "+faststart",
+          "-fflags",
+          "+genpts",
+          "-i",
+          webmPath,
+          "-c:v",
+          "libx264",
+          "-preset",
+          "ultrafast",
+          "-c:a",
+          "aac",
+          "-movflags",
+          "+faststart",
           mp4Path,
         ]);
 
@@ -123,14 +166,23 @@ class VODWorker {
       try {
         const ffprobeOut = await new Promise<string>((resolve, reject) => {
           const ffprobe = spawn("ffprobe", [
-            "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
             mp4Path,
           ]);
           let out = "";
-          ffprobe.stdout.on("data", (d: Buffer) => { out += d.toString(); });
-          ffprobe.on("close", (code: number | null) => code === 0 ? resolve(out.trim()) : reject(new Error(`ffprobe exited ${code}`)));
+          ffprobe.stdout.on("data", (d: Buffer) => {
+            out += d.toString();
+          });
+          ffprobe.on("close", (code: number | null) =>
+            code === 0
+              ? resolve(out.trim())
+              : reject(new Error(`ffprobe exited ${code}`)),
+          );
           ffprobe.on("error", reject);
         });
         duration = Math.round(parseFloat(ffprobeOut));
@@ -158,6 +210,7 @@ class VODWorker {
 
       logger.info(`VOD processed and saved: ${streamId}`);
     } catch (error) {
+      if (mp4Path) await fs.promises.unlink(mp4Path).catch(() => {});
       logger.error(`Error processing VOD: ${streamId}`, error);
       throw error;
     }

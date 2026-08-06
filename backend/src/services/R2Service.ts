@@ -4,8 +4,10 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from "@aws-sdk/lib-storage";
 import { promises as fs } from "fs";
 import type { Logger } from "winston";
+import { createReadStream } from "fs";
 
 class R2Service {
   private logger: Logger;
@@ -45,17 +47,22 @@ class R2Service {
     return `https://${this.bucket}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
   }
 
-  async uploadFile(filePath: string, key: string): Promise<string> {
-    const fileContent = await fs.readFile(filePath);
-
-    await this.client.send(
-      new PutObjectCommand({
+  async uploadFile(
+    filePath: string,
+    key: string,
+    contentType = "video/mp4",
+  ): Promise<string> {
+    const upload = new Upload({
+      client: this.client,
+      params: {
         Bucket: this.bucket,
         Key: key,
-        Body: fileContent,
-        ContentType: "video/webm",
-      }),
-    );
+        Body: createReadStream(filePath),
+        ContentType: contentType,
+      },
+    });
+
+    await upload.done();
 
     this.logger.info(`Uploaded ${key} to R2`);
     return `https://${this.bucket}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
