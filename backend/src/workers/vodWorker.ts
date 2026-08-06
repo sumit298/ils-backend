@@ -128,7 +128,9 @@ class VODWorker {
           "-i",
           webmPath,
           "-c:v",
-          "copy",
+          "libx264",
+          "-preset",
+          "ultrafast",
           "-c:a",
           "aac",
           "-movflags",
@@ -208,6 +210,7 @@ class VODWorker {
 
       logger.info(`VOD processed and saved: ${streamId}`);
     } catch (error) {
+      if (mp4Path) await fs.promises.unlink(mp4Path).catch(() => {});
       logger.error(`Error processing VOD: ${streamId}`, error);
       throw error;
     }
