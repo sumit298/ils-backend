@@ -105,7 +105,7 @@ class VODWorker {
   async processVOD(data: VODJobData): Promise<void> {
     const { streamId, webmPath, userId } = data;
     const recordingsDir = "/tmp/recordings";
-    const mp4Path = path.join(recordingsDir, `${streamId}.mp4`);
+    const mp4Path = path.join(recordingsDir, `${streamId}-${Date.now()}.mp4`);
 
     logger.info(`Processing VOD: ${streamId}`);
 
@@ -128,7 +128,7 @@ class VODWorker {
           "-i",
           webmPath,
           "-c:v",
-          "libx264",
+          "copy",
           "-c:a",
           "aac",
           "-movflags",

@@ -124,9 +124,16 @@ class MessageQueue {
       maxLength: 5000,
     });
 
+    await this.channel.assertExchange("vod.dlx", "direct", { durable: true });
+    await this.channel.assertQueue("vod.conversion.dlq", { durable: true });
+    await this.channel.bindQueue("vod.conversion.dlq", "vod.dlx", "vod.conversion");
     await this.channel.assertQueue("vod.conversion", {
       durable: true,
-      maxLength: 100,
+      maxLength: 1000,
+      arguments: {
+        "x-dead-letter-exchange": "vod.dlx",
+        "x-dead-letter-routing-key": "vod.conversion",
+      },
     });
   }
 

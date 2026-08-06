@@ -652,12 +652,16 @@ const StreamsPage = ({ isStreamer = true }) => {
       if (e.data.size === 0) return;
       const index = chunkIndexRef.current++;
       const blob = e.data;
+      const recordingId = recordingIdSource();
+      if(!recordingId) {
+        return;
+      }
 
       const tryUpload = async (attempts = 0): Promise<void> => {
         const formData = new FormData();
         formData.append("chunk", blob);
         formData.append("streamId", params.id as string);
-        formData.append("recordingId", recordingIdSource() as string);
+        formData.append("recordingId", recordingId);
         formData.append("chunkIndex", index.toString());
         try {
           await api.post("/api/vods/upload-chunk", formData, {

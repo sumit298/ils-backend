@@ -16,8 +16,6 @@ import { Stream } from "../models/index";
 
 const RECORDINGS_ROOT = "/tmp/recordings";
 const RESOLVED_RECORDINGS_ROOT = path.resolve(RECORDINGS_ROOT);
-const UPLOAD_TMP_ROOT = "/tmp";
-const RESOLVED_UPLOAD_TMP_ROOT = path.resolve(UPLOAD_TMP_ROOT);
 // Allowlist: UUID-timestamp only
 const RECORDING_ID_RE =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-\d+$/i;
@@ -233,32 +231,8 @@ const VodController = {
         throw new ValidationError("Invalid upload temp file path");
       }
 
-      const resolvedChunkPath = path.resolve(
-        RESOLVED_UPLOAD_TMP_ROOT,
-        chunkFilename,
-      );
-      if (
-        resolvedChunkPath !== RESOLVED_UPLOAD_TMP_ROOT &&
-        !resolvedChunkPath.startsWith(RESOLVED_UPLOAD_TMP_ROOT + path.sep)
-      ) {
-        throw new ValidationError("Invalid upload temp file path");
-      }
-
-      const realChunkPath = await fs.realpath(resolvedChunkPath);
-      if (
-        realChunkPath !== RESOLVED_UPLOAD_TMP_ROOT &&
-        !realChunkPath.startsWith(RESOLVED_UPLOAD_TMP_ROOT + path.sep)
-      ) {
-        throw new ValidationError("Invalid upload temp file path");
-      }
-
-      const chunkStat = await fs.lstat(realChunkPath);
-      if (!chunkStat.isFile()) {
-        throw new ValidationError("Invalid upload temp file");
-      }
-
-      const chunkData = await fs.readFile(realChunkPath);
-      await fs.unlink(realChunkPath); // Clean up the uploaded temp file
+      const chunkData = await fs.readFile(chunk.path);
+      await fs.unlink(chunk.path);
 
       if (!chunkBuffers.has(recordingId)) {
         chunkBuffers.set(recordingId, new Map());
